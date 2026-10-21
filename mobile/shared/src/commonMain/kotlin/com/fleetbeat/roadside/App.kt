@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fleetbeat.roadside.remote.*
+import com.fleetbeat.roadside.assistant.*
 import com.fleetbeat.roadside.auth.AuthViewModel
 import com.fleetbeat.roadside.catalog.CatalogViewModel
 import com.fleetbeat.roadside.catalog.CatalogScreen
@@ -24,13 +25,14 @@ import com.fleetbeat.roadside.diagnostics.DiagnosticsViewModel
 import com.fleetbeat.roadside.diagnostics.DiagnosticsScreen
 
 @Composable
-fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnosticsViewModel: DiagnosticsViewModel, remoteViewModel: RemoteViewModel,
-        onScan: () -> Unit, onEnableBluetooth: () -> Unit, onPermissions: () -> Unit, onLocation: () -> Unit) {
+fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnosticsViewModel: DiagnosticsViewModel, remoteViewModel: RemoteViewModel, assistantViewModel: AssistantViewModel,
+        onVoiceInput: () -> Unit, onScan: () -> Unit, onEnableBluetooth: () -> Unit, onPermissions: () -> Unit, onLocation: () -> Unit) {
     val state by viewModel.state.collectAsState()
+    val assistantState by assistantViewModel.state.collectAsState()
     val remoteState by remoteViewModel.state.collectAsState()
     val diagnosticsState by diagnosticsViewModel.state.collectAsState()
     val catalogState by catalogViewModel.state.collectAsState()
-    LaunchedEffect(state.profile?.id) { catalogViewModel.bindUser(state.profile?.id); diagnosticsViewModel.bindUser(state.profile?.id); remoteViewModel.bindUser(state.profile?.id) }
+    LaunchedEffect(state.profile?.id) { catalogViewModel.bindUser(state.profile?.id); diagnosticsViewModel.bindUser(state.profile?.id); remoteViewModel.bindUser(state.profile?.id); assistantViewModel.bindUser(state.profile?.id) }
     var passwordVisible by remember { mutableStateOf(false) }
     MaterialTheme(colorScheme = darkColorScheme(
         primary = Color(0xFFF7AA32), onPrimary = Color(0xFF151B25),
@@ -38,8 +40,14 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
         onBackground = Color(0xFFF2F5F8), onSurface = Color(0xFFF2F5F8),
     )) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            if (state.profile != null && remoteState.open) {
-                RemoteScreen(remoteViewModel)
+            if (state.profile != null && assistantState.open) {
+                AssistantScreen(assistantViewModel, onVoiceInput)
+            } else if (state.profile != null && remoteState.open) {
+                RemoteScreen(remoteViewModel) {
+                    val question = remoteState.diagnosticQuestion()
+                    remoteViewModel.disconnect()
+                    assistantViewModel.open(question)
+                }
             } else if (state.profile != null && diagnosticsState.open) {
                 DiagnosticsScreen(diagnosticsViewModel, onScan, onEnableBluetooth, onPermissions, onLocation)
             } else if (state.profile != null && catalogState.open) {
@@ -85,6 +93,8 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Adapter & live data") }
                         OutlinedButton(onClick = { diagnosticsViewModel.closeScreen(); remoteViewModel.open() }, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Remote diagnostics") }
+                        OutlinedButton(onClick = { assistantViewModel.open() }, enabled = !state.loading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Diagnostic assistant") }
                         OutlinedButton(onClick = viewModel::refresh, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Refresh profile") }
                         OutlinedButton(onClick = viewModel::logout, enabled = !state.loading,

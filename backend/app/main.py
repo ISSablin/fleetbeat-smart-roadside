@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
+import httpx
+
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,6 +10,7 @@ from sqlmodel import Session, text
 
 from app.auth.routes import router as auth_router
 from app.remote import router as remote_router
+from app.advice import router as advice_router
 from app.auth.tokens import TokenService
 from app.config import Settings
 from app.db import get_session, open_database
@@ -30,7 +33,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.tokens = tokens
         application.state.engine = engine
         try:
-            yield
+            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0), follow_redirects=False) as ai_http:
+                application.state.ai_http = ai_http
+                yield
         finally:
             engine.dispose()
 
@@ -42,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application.include_router(auth_router)
     application.include_router(remote_router)
+    application.include_router(advice_router)
 
     @application.get("/health", response_model=HealthResponse, tags=["health"])
     def health(session: Annotated[Session, Depends(get_session)]) -> HealthResponse:
