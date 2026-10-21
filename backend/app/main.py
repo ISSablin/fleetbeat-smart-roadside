@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, text
 
+from app.auth.routes import router as auth_router
+from app.auth.tokens import TokenService
 from app.config import Settings
 from app.db import get_session, open_database
 
@@ -21,7 +23,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        tokens = TokenService(settings)
         engine = open_database(settings)
+        application.state.settings = settings
+        application.state.tokens = tokens
         application.state.engine = engine
         try:
             yield
@@ -33,6 +38,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    application.include_router(auth_router)
 
     @application.get("/health", response_model=HealthResponse, tags=["health"])
     def health(session: Annotated[Session, Depends(get_session)]) -> HealthResponse:
