@@ -17,10 +17,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fleetbeat.roadside.auth.AuthViewModel
+import com.fleetbeat.roadside.catalog.CatalogViewModel
+import com.fleetbeat.roadside.catalog.CatalogScreen
 
 @Composable
-fun App(viewModel: AuthViewModel) {
+fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel) {
     val state by viewModel.state.collectAsState()
+    val catalogState by catalogViewModel.state.collectAsState()
+    LaunchedEffect(state.profile?.id) { catalogViewModel.bindUser(state.profile?.id) }
     var passwordVisible by remember { mutableStateOf(false) }
     MaterialTheme(colorScheme = darkColorScheme(
         primary = Color(0xFFF7AA32), onPrimary = Color(0xFF151B25),
@@ -28,6 +32,9 @@ fun App(viewModel: AuthViewModel) {
         onBackground = Color(0xFFF2F5F8), onSurface = Color(0xFFF2F5F8),
     )) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            if (state.profile != null && catalogState.open) {
+                CatalogScreen(catalogViewModel)
+            } else {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
                 .imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -62,12 +69,15 @@ fun App(viewModel: AuthViewModel) {
                         Button(onClick = viewModel::login, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Sign in") }
                     } else {
-                        Button(onClick = viewModel::refresh, enabled = !state.loading,
+                        Button(onClick = catalogViewModel::open, enabled = !state.loading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Select vehicle") }
+                        OutlinedButton(onClick = viewModel::refresh, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Refresh profile") }
                         OutlinedButton(onClick = viewModel::logout, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Sign out") }
                     }
                 }
+            }
             }
         }
     }

@@ -79,4 +79,19 @@ For multiple connected devices, add `-s DEVICE_SERIAL` to each adb command. The 
 
 Override the API URL at build time with `-PapiBaseUrl=https://your-api.example.com`. To use a local backend instead, build with `-PapiBaseUrl=http://127.0.0.1:8000`, start that backend, and run `adb reverse tcp:8000 tcp:8000`; local and deployed accounts are separate. HTTP is enabled only in debug builds; release builds require HTTPS. The app ID is `com.fleetbeat.roadside`, so it can coexist with other installed apps.
 
-The app supports sign-in, profile refresh and sign-out. Passwords are not persisted. Android session tokens are encrypted with a device Keystore key, excluded from backup, and checked against the server when the app starts.
+The app supports sign-in, profile refresh, sign-out and truck selection. Passwords are not persisted. Android session tokens are encrypted with a device Keystore key, excluded from backup, and checked against the server when the app starts.
+
+## Vehicle catalog
+
+After signing in, choose **Select vehicle**. Select a truck brand, model, year and control unit. Each list supports search. Back returns to the previous list and preserves its search; backing out of the brand list returns to the account screen. A selected vehicle and unit remain available during activity recreation; they are not persisted across process termination. Signing out clears the selection.
+
+The account API defaults to `https://api3.truck-inspect.com`; the vehicle catalog defaults to `https://cardb3.truck-inspect.com`. Both use the same signed-in bearer token. Override the catalog address independently with `-PcarApiBaseUrl=https://your-car-api.example.com`. Alternate services must trust the account API's signing keys and token issuer.
+
+The vehicle picker browses catalog information only. Selecting a control unit does not connect to an adapter or send commands to a vehicle.
+
+Run mobile catalog tests on your computer without an emulator:
+
+```bash
+cd mobile
+./gradlew :shared:testAndroidHostTest
+```
