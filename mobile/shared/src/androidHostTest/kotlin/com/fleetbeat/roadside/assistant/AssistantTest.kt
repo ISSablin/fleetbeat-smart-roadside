@@ -29,6 +29,17 @@ class AssistantTest {
         try { vm.bindUser(1); vm.open(); block(vm, service, expired) }
         finally { store.clear(); Dispatchers.resetMain() }
     }
+    @Test fun sessionRetainsTypedAndVoiceQuestionsUntilClosed() = fixture { vm, _, _ ->
+        vm.question("First symptoms"); vm.send(); runCurrent()
+        vm.question("Additional detail")
+        vm.voiceResult(vm.beginVoiceInput()!!, "from speech")
+        vm.send(); runCurrent()
+        assertEquals(listOf("First symptoms", "Additional detail from speech"), vm.state.value.turns.map { it.question })
+        vm.question("Unsent observation")
+        assertEquals(2, vm.state.value.turns.size)
+        assertEquals("Unsent observation", vm.state.value.question)
+        vm.closeScreen(); assertTrue(vm.state.value.turns.isEmpty())
+    }
     @Test fun previewDoesNotSendAndEachExplicitTapSendsOnce() = fixture { vm, service, _ ->
         vm.open(" Explain a coolant sensor fault "); runCurrent()
         assertTrue(service.questions.isEmpty())

@@ -169,3 +169,22 @@ The last command prompts for the account password. The stable project name `flee
 AI guidance is optional. `ROADSIDE_AI_GATEWAY_URL` points to a trusted gateway implementing `POST /v1/complete`. `ROADSIDE_AI_CLIENT_TOKEN` is that gateway's server-to-server client credential, **not the Anthropic API key** and not a technician's login token. The provider key stays on the gateway. With these settings absent, accounts and session routes remain available while advice returns HTTP 503. Real `.env` files are ignored by Git.
 
 The API binds to host loopback port 8000. Put an HTTPS reverse proxy in front of it before connecting remote mobile clients. When changing the account API, configure the catalog and MQTT broker to trust that API's signing keys, issuer and audience before testing those integrations. Validate the new hostname and services before changing mobile `apiBaseUrl`. Compose runs the API only; the catalog, MQTT and AI services require separate configuration.
+
+
+## Saved diagnostic reports
+
+Remote diagnostic reports save automatically as readings and fault responses arrive. Each connection updates one report. AI sessions also save automatically, including additional typed or voice input and report notes. No manual save action is needed.
+
+Open **Saved reports** from the account screen to review the history. Reports include capture time in UTC, source, adapter details, values, raw fault codes/status bytes and available catalog descriptions. Each reading and fault response retains its age and stale state at capture. DIAG reports are prominently labelled as simulated. An ECU response containing zero matching faults is kept distinct from receiving no fault response.
+
+Reports are stored in private app files on this device, separately for each account and account-API address. Signing out hides reports but retains them for that account's next sign-in. Reports are not uploaded or synced. Up to 100 reports can be saved per account on the device; delete older reports to free capacity. Uninstalling the app removes these private reports. The app reports unreadable/unsupported files without presenting them as valid data.
+
+From a report, choose **Export text** and pick a destination in Android's file picker. The UTF-8 text file includes the source, simulator label, capture-relative ages, values and fault details. Account credentials and remote session codes are not included. Exported copies are separate files in the chosen location and are not removed by **Delete report**, which requires confirmation and removes only the private saved copy. Export does not send a message to another person or call the AI service.
+
+Report saving covers remote diagnostics and AI assistance. Local Bluetooth report capture and cloud history are not included.
+
+AI sessions save automatically from Diagnostic assistant, including ECU snapshots when opened from results, all completed questions and answers, unsent input, and optional user notes. Each AI request sends the current question only; previous answers remain in the local session and report. Reports remain private to the signed-in account on this device and can be exported as text.
+
+Reports save automatically on this device: one report per remote connection and one per AI session, updated with new results, completed AI exchanges, unsent additional input, and report notes. No Save report action is required. Existing reports remain readable. Local storage holds up to 100 reports per account; save failures are shown rather than deleting older reports.
+
+Future FleetBeat upload configuration lives in `.env.example`: `ROADSIDE_REPORT_UPLOAD_ENABLED`, `ROADSIDE_REPORT_UPLOAD_URL`, `ROADSIDE_REPORT_UPLOAD_METHOD` (POST/PUT), and `ROADSIDE_REPORT_UPLOAD_API_KEY`. The backend transport in `backend/app/report_upload.py` sends JSON over HTTPS with X-API-Key and an idempotency key for each report revision. Upload remains disabled and unwired: mobile ingestion, a persistent retry outbox, account authorization, and the FleetBeat endpoint contract will be implemented when upload is enabled. API keys stay on the backend; none are packaged in the APK.

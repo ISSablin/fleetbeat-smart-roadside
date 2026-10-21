@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.sp
 import com.fleetbeat.roadside.diagnostics.diagnosticReadings
 
 @Composable
-fun RemoteScreen(viewModel: RemoteViewModel, onExplain: () -> Unit) {
+fun RemoteScreen(viewModel: RemoteViewModel, reportNotice: String?, onExplain: () -> Unit) {
     val state by viewModel.state.collectAsState()
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(horizontal = 20.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -59,6 +59,10 @@ fun RemoteScreen(viewModel: RemoteViewModel, onExplain: () -> Unit) {
                 }
             }
             if (state.linked) {
+                if (state.requestedValues.isNotEmpty() || state.faultsReadAt != null || state.values.isNotEmpty() || state.faults.isNotEmpty()) item {
+                    Text("Reports save automatically on this device.", color = MaterialTheme.colorScheme.primary)
+                    reportNotice?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                }
                 item {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

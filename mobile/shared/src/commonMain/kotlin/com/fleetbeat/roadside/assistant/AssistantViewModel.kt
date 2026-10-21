@@ -3,10 +3,13 @@ package com.fleetbeat.roadside.assistant
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fleetbeat.roadside.auth.AuthFailure
+import com.fleetbeat.roadside.reports.DiagnosticReport
+import com.fleetbeat.roadside.reports.ReportTurn
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 data class AssistantState(val open: Boolean = false, val question: String = "", val busy: Boolean = false,
+                          val session: Int = 0, val notes: String = "", val turns: List<ReportTurn> = emptyList(), val ecuContext: DiagnosticReport? = null,
                           val voiceActive: Boolean = false, val advice: Advice? = null, val error: String? = null, val notice: String? = null)
 
 class AssistantViewModel(private val service: AdviceService, private val expired: (String) -> Unit,
@@ -19,10 +22,11 @@ class AssistantViewModel(private val service: AdviceService, private val expired
     private var voiceSequence = 0
     private var pendingVoice: Pair<Int, Int>? = null
     fun bindUser(id: Int?) { if (owner != id) { closeScreen(); owner = id } }
-    fun open(question: String = "") {
+    fun open(question: String = "", ecuContext: DiagnosticReport? = null) {
         generation++; operation?.cancel(); pendingVoice = null
-        mutable.value = AssistantState(open = true, question = question.take(600))
+        mutable.value = AssistantState(open = true, session = generation, question = question.take(600), ecuContext = ecuContext)
     }
+    fun notes(value: String) { mutable.update { it.copy(notes = value.take(4000)) } }
     fun question(value: String) {
         if (!mutable.value.busy && !mutable.value.voiceActive) mutable.update { it.copy(question = value.take(600), advice = null, error = null, notice = null) }
     }
@@ -57,6 +61,7 @@ class AssistantViewModel(private val service: AdviceService, private val expired
     }
     fun send() {
         if (mutable.value.busy || mutable.value.voiceActive || !mutable.value.open) return
+        if (mutable.value.turns.size >= 20) { mutable.update { it.copy(error = "Session limit reached. Save your report and open a new session.") }; return }
         val text = mutable.value.question.trim()
         if (text.isEmpty()) { mutable.update { it.copy(error = "Enter a diagnostic question.") }; return }
         val epoch = generation
@@ -66,7 +71,7 @@ class AssistantViewModel(private val service: AdviceService, private val expired
                 val result = withTimeout(80_000) { service.ask(text) }
                 if (generation == epoch) {
                     if (result.stub || result.body.isBlank()) throw AdviceFailure("The AI service did not return generated guidance.")
-                    mutable.update { it.copy(advice = result) }
+                    mutable.update { it.copy(advice = result, turns = it.turns + ReportTurn(text, result.title, result.body, result.causes)) }
                 }
             } catch (error: TimeoutCancellationException) {
                 if (generation == epoch) mutable.update { it.copy(error = "The AI request timed out. You can try again.") }

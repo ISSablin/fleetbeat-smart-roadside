@@ -15,6 +15,10 @@ class Settings:
     token_ttl_seconds: int = 86400
     ai_gateway_url: str = ""
     ai_client_token: str = field(default="", repr=False)
+    report_upload_enabled: bool = False
+    report_upload_url: str = ""
+    report_upload_method: str = "POST"
+    report_upload_api_key: str = field(default="", repr=False)
     data_dir: Path = field(default_factory=default_data_dir)
 
     @property
@@ -25,5 +29,8 @@ class Settings:
     def from_env(cls) -> "Settings":
         value = os.environ.get("ROADSIDE_DATA_DIR")
         data_dir = Path(value).expanduser().resolve() if value else default_data_dir()
-        return cls(data_dir=data_dir, ai_gateway_url=os.environ.get("ROADSIDE_AI_GATEWAY_URL", "").strip(),
+        return cls(report_upload_enabled=os.environ.get("ROADSIDE_REPORT_UPLOAD_ENABLED", "false").lower() == "true",
+                   report_upload_url=os.environ.get("ROADSIDE_REPORT_UPLOAD_URL", "").strip(),
+                   report_upload_method=os.environ.get("ROADSIDE_REPORT_UPLOAD_METHOD", "POST").strip().upper(),
+                   report_upload_api_key=os.environ.get("ROADSIDE_REPORT_UPLOAD_API_KEY", "").strip(), data_dir=data_dir, ai_gateway_url=os.environ.get("ROADSIDE_AI_GATEWAY_URL", "").strip(),
                    ai_client_token=os.environ.get("ROADSIDE_AI_CLIENT_TOKEN", "").strip())
