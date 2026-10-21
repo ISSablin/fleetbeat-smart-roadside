@@ -1,0 +1,48 @@
+from contextlib import asynccontextmanager
+from typing import Annotated, Literal
+
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import Session, text
+
+from app.config import Settings
+from app.db import get_session, open_database
+
+
+class HealthResponse(BaseModel):
+    status: Literal["ok"] = "ok"
+    service: str
+    database: Literal["ok"] = "ok"
+
+
+def create_app(settings: Settings | None = None) -> FastAPI:
+    settings = settings if settings is not None else Settings.from_env()
+
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        engine = open_database(settings)
+        application.state.engine = engine
+        try:
+            yield
+        finally:
+            engine.dispose()
+
+    application = FastAPI(
+        title=settings.app_name,
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+
+    @application.get("/health", response_model=HealthResponse, tags=["health"])
+    def health(session: Annotated[Session, Depends(get_session)]) -> HealthResponse:
+        try:
+            session.exec(text("SELECT 1")).one()
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=503, detail="Database unavailable") from exc
+        return HealthResponse(service=settings.app_name)
+
+    return application
+
+
+app = create_app()
