@@ -1,0 +1,74 @@
+package com.fleetbeat.roadside
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.fleetbeat.roadside.auth.AuthViewModel
+
+@Composable
+fun App(viewModel: AuthViewModel) {
+    val state by viewModel.state.collectAsState()
+    var passwordVisible by remember { mutableStateOf(false) }
+    MaterialTheme(colorScheme = darkColorScheme(
+        primary = Color(0xFFF7AA32), onPrimary = Color(0xFF151B25),
+        background = Color(0xFF101824), surface = Color(0xFF1A2635),
+        onBackground = Color(0xFFF2F5F8), onSurface = Color(0xFFF2F5F8),
+    )) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
+                .imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Column(Modifier.widthIn(max = 460.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    Text("FleetBeat Smart Roadside", fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold)
+                    Text(if (state.profile == null) "Sign in to your technician account" else "Your account",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.primary, thickness = 2.dp)
+                    if (state.profile == null) {
+                        OutlinedTextField(state.email, viewModel::emailChanged, Modifier.fillMaxWidth(),
+                            label = { Text("Email") }, singleLine = true, enabled = !state.loading,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+                        OutlinedTextField(state.password, viewModel::passwordChanged, Modifier.fillMaxWidth(),
+                            label = { Text("Password") }, singleLine = true, enabled = !state.loading,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = { TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Text(if (passwordVisible) "Hide" else "Show")
+                            } })
+                    } else {
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Signed in", color = MaterialTheme.colorScheme.primary)
+                                Text(state.profile!!.login, fontSize = 20.sp)
+                                Text("Account active")
+                            }
+                        }
+                    }
+                    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (state.profile == null) {
+                        Button(onClick = viewModel::login, enabled = !state.loading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Sign in") }
+                    } else {
+                        Button(onClick = viewModel::refresh, enabled = !state.loading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Refresh profile") }
+                        OutlinedButton(onClick = viewModel::logout, enabled = !state.loading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Sign out") }
+                    }
+                }
+            }
+        }
+    }
+}

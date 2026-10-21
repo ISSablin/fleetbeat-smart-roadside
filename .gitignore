@@ -11,3 +11,10 @@ backend/data/
 *.db
 *.db-shm
 *.db-wal
+*.pem
+mobile/**/.gradle/
+mobile/**/.kotlin/
+mobile/**/build/
+mobile/local.properties
+mobile/.idea/
+*.apk

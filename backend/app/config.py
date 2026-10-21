@@ -10,6 +10,9 @@ def default_data_dir() -> Path:
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "FleetBeat Smart Roadside"
+    jwt_issuer: str = "fleetbeat-smart-roadside"
+    jwt_audience: str = "fleetbeat-mobile"
+    token_ttl_seconds: int = 86400
     data_dir: Path = field(default_factory=default_data_dir)
 
     @property
