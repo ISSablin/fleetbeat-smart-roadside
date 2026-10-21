@@ -12,6 +12,7 @@ kotlin {
         namespace = "com.fleetbeat.roadside.shared"
         compileSdk = 37
         minSdk = 24
+        withHostTest { }
         compilerOptions { jvmTarget = JvmTarget.JVM_11 }
     }
     sourceSets {
@@ -25,6 +26,11 @@ kotlin {
             implementation(libs.ktor.json)
             implementation(libs.coroutines)
             implementation(libs.serialization)
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(kotlin("test-junit"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+            implementation("io.ktor:ktor-client-mock:3.1.3")
         }
         androidMain.dependencies { implementation(libs.ktor.okhttp) }
     }

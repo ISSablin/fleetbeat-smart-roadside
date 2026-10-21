@@ -40,6 +40,12 @@ class AuthRepository(private val api: AuthApi, private val store: SessionStore,
         }
     }
 
+    fun accessToken(): String {
+        val saved = session ?: throw AuthFailure("Please sign in again.", true)
+        if (saved.expiresAt <= now()) throw AuthFailure("Your session expired. Please sign in again.", true)
+        return saved.token
+    }
+
     fun logout() {
         store.clear()
         session = null

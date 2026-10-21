@@ -41,6 +41,15 @@ class AuthViewModel(private val repository: AuthRepository, private val closeCli
         }
     }
 
+    fun accessToken(): String = repository.accessToken()
+
+    fun sessionExpired(message: String) {
+        perform {
+            repository.logout()
+            mutable.value = AuthState(loading = true, error = message)
+        }
+    }
+
     fun logout() {
         if (!mutable.value.loading) perform {
             repository.logout()
