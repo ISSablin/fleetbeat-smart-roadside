@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fleetbeat.roadside.auth.AuthFailure
 import com.fleetbeat.roadside.diagnostics.*
+import com.fleetbeat.roadside.diagnostics.ecu.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
@@ -16,13 +17,16 @@ data class RemoteState(
     val version: String? = null, val voltage: Double? = null,
     val rxBytes: Long = 0, val txBytes: Long = 0, val frames: Long = 0,
     val lastResponse: Long? = null, val now: Long = 0,
+    val ecuBusy: Boolean = false, val ecuStatus: String? = null, val ecuProfile: String? = null,
+    val requestedValues: List<RequestedValue> = emptyList(), val ecuFaults: List<EcuFault> = emptyList(),
+    val faultsReadAt: Long? = null, val catalogWarning: String? = null,
     val values: List<LiveValue> = emptyList(), val faults: List<FaultReport> = emptyList(),
 )
 
 /** Technician side only. The vehicle-side phone/simulator owns the physical adapter. */
 class RemoteViewModel(private val sessions: RemoteSessions, private val pipe: RemotePipe,
     private val credentials: () -> Pair<String, String>, private val clock: () -> Long,
-    private val expired: (String) -> Unit, private val closeClient: () -> Unit = {}) : ViewModel() {
+    private val expired: (String) -> Unit, private val diagnosticCatalog: DiagnosticCatalog? = null, private val closeClient: () -> Unit = {}) : ViewModel() {
     private val mutable = MutableStateFlow(RemoteState())
     val state = mutable.asStateFlow()
     private val wire = AdapterWire()
@@ -37,6 +41,7 @@ class RemoteViewModel(private val sessions: RemoteSessions, private val pipe: Re
     private var activeCode: String? = null
     private var streamRequested = false
     private var generation = 0
+    private var ecu: EcuExchange? = null
 
     init {
         viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -45,7 +50,10 @@ class RemoteViewModel(private val sessions: RemoteSessions, private val pipe: Re
                 mutable.update { it.copy(rxBytes = it.rxBytes + bytes.size) }
                 wire.feed(bytes).forEach { packet ->
                     when (packet) {
-                        is AdapterPacket.Can -> if (mutable.value.listening) data.accept(packet.frame, clock())
+                        is AdapterPacket.Can -> {
+                            ecu?.receive(packet.frame)
+                            if (mutable.value.listening) data.accept(packet.frame, clock())
+                        }
                         is AdapterPacket.Service -> {
                             val fields = packet.fields
                             val type = (fields["t"] as? JsonPrimitive)?.contentOrNull
@@ -66,10 +74,10 @@ class RemoteViewModel(private val sessions: RemoteSessions, private val pipe: Re
             pipe.state.collect { broker ->
                 if (broker == BrokerState.Error && activeCode != null) {
                     pending?.completeExceptionally(IllegalStateException("The broker connection was lost. Reconnect the session."))
-                    operation?.cancel()
+                    operation?.cancel(); ecu?.cancel(); ecu = null
                     activeCode = null
                     pipe.close()
-                    mutable.update { it.copy(linked = false, listening = false, busy = false,
+                    mutable.update { it.copy(linked = false, listening = false, busy = false, ecuBusy = false,
                         status = "Disconnected", error = "The broker connection was lost. Reconnect the session.") }
                 }
             }
@@ -135,8 +143,60 @@ class RemoteViewModel(private val sessions: RemoteSessions, private val pipe: Re
             mutable.update { it.copy(listening = false, status = "Remote listening stopped") }
         }
     }
+    fun readEcuValues() = diagnosticRead("Reading ECU values…") { exchange, _ ->
+        val rpm = BenchDecode.rpm(exchange.read(EcuRead.EngineRpm))
+        val rpmAt = clock()
+        val coolant = BenchDecode.coolant(exchange.read(EcuRead.Coolant))
+        mutable.update { it.copy(requestedValues = listOf(RequestedValue("Engine RPM", rpm, "rpm", rpmAt),
+            RequestedValue("Coolant temperature", coolant, "°C", clock())), ecuStatus = "ECU values read") }
+    }
+    fun readEcuFaults() = diagnosticRead("Reading ECU fault codes…") { exchange, catalog ->
+        val codes = BenchDecode.faults(exchange.read(EcuRead.Faults))
+        mutable.update { it.copy(ecuFaults = codes, faultsReadAt = clock(), ecuStatus = "${codes.size} ECU fault codes read", catalogWarning = null) }
+        // Raw ECU records remain usable if the separate description service fails.
+        try {
+            val descriptions = catalog.descriptions(codes.map { it.raw }).associateBy { it.raw.uppercase() }
+            mutable.update { state -> state.copy(ecuFaults = codes.map { code ->
+                val detail = descriptions[code.raw]
+                if (detail?.description.isNullOrBlank()) code else code.copy(label = detail.show, description = detail.description)
+            }) }
+        } catch (error: CancellationException) { throw error }
+          catch (error: AuthFailure) { throw error }
+          catch (_: Exception) { mutable.update { it.copy(catalogWarning = "Descriptions are unavailable. Raw ECU codes and status are shown.") } }
+    }
+    private fun diagnosticRead(status: String, action: suspend (EcuExchange, DiagnosticCatalog) -> Unit) {
+        if (!mutable.value.linked || mutable.value.busy || mutable.value.listening || activeCode != "DIAG") return
+        launchOperation {
+            val catalog = diagnosticCatalog ?: error("Requested diagnostics are unavailable in this build.")
+            mutable.update { it.copy(ecuBusy = true, ecuStatus = status, catalogWarning = null) }
+            val profile = catalog.benchProfile()
+            mutable.update { it.copy(ecuProfile = "DIAG engine · protocol 5935 · 500 kbit/s", speed = profile.speed) }
+            streamRequested = true
+            val ack = request { diagnosticSettings(it, profile) }
+            check((ack["mode"] as? JsonPrimitive)?.contentOrNull == "active" &&
+                (ack["speed"] as? JsonPrimitive)?.intOrNull == profile.speed &&
+                (ack["format"] as? JsonPrimitive)?.intOrNull == 29 &&
+                (ack["stream"] as? JsonPrimitive)?.booleanOrNull == true &&
+                (ack["filter"] as? JsonArray)?.map { it.jsonPrimitive.long } == listOf(profile.rx.toLong())) {
+                "The adapter did not confirm the ECU diagnostic settings."
+            }
+            val exchange = EcuExchange(profile.tx, profile.rx, clock) { frame ->
+                val code = activeCode ?: error("Remote session disconnected.")
+                val bytes = canWire(frame)
+                pipe.publish("adapter/$code/down", bytes)
+                mutable.update { it.copy(txBytes = it.txBytes + bytes.size) }
+            }
+            ecu = exchange
+            try { action(exchange, catalog) }
+            finally { exchange.cancel(); if (ecu === exchange) ecu = null }
+            request { AdapterCommands.listen(it, profile.speed, false) }
+            streamRequested = false
+            mutable.update { it.copy(ecuBusy = false, status = "Remote adapter connected") }
+        }
+    }
     fun disconnect(closeScreen: Boolean = false) {
         generation++
+        ecu?.cancel(); ecu = null
         operation?.cancel(); pending?.cancel(); pending = null; pendingId = null
         val code = activeCode
         activeCode = null
@@ -192,5 +252,5 @@ class RemoteViewModel(private val sessions: RemoteSessions, private val pipe: Re
         disconnect()
         mutable.update { it.copy(status = "Disconnected", error = message) }
     }
-    override fun onCleared() { pipe.close(); closeClient(); super.onCleared() }
+    override fun onCleared() { ecu?.cancel(); pipe.close(); closeClient(); super.onCleared() }
 }
