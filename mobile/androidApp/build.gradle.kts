@@ -7,6 +7,8 @@ plugins {
 kotlin { compilerOptions { jvmTarget = JvmTarget.JVM_11 } }
 val apiUrl = providers.gradleProperty("apiBaseUrl").orElse("https://api3.truck-inspect.com")
 val carApiUrl = providers.gradleProperty("carApiBaseUrl").orElse("https://cardb3.truck-inspect.com")
+val mqttHost = providers.gradleProperty("mqttHost").orElse("cardb3.truck-inspect.com")
+val mqttPort = providers.gradleProperty("mqttPort").orElse("8822")
 android {
     namespace = "com.fleetbeat.roadside"
     compileSdk = 37
@@ -14,6 +16,8 @@ android {
         applicationId = "com.fleetbeat.roadside"
         minSdk = 24
         targetSdk = 36
+        buildConfigField("String", "MQTT_HOST", "\"${mqttHost.get().replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("int", "MQTT_PORT", mqttPort.get().toInt().also { require(it in 1..65535) }.toString())
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "API_BASE_URL", "\"${apiUrl.get().replace("\\", "\\\\").replace("\"", "\\\"")}\"")
@@ -22,6 +26,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+    packaging.resources {
+        excludes += setOf("META-INF/INDEX.LIST", "META-INF/io.netty.versions.properties")
+        merges += setOf("META-INF/NOTICE", "META-INF/NOTICE.txt", "META-INF/LICENSE", "META-INF/LICENSE.txt", "META-INF/DEPENDENCIES")
     }
     buildFeatures { compose = true; buildConfig = true }
 }
