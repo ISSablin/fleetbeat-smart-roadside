@@ -2,6 +2,7 @@ package com.fleetbeat.roadside
 
 import com.fleetbeat.roadside.remote.*
 import com.fleetbeat.roadside.assistant.*
+import com.fleetbeat.roadside.guided.*
 import com.fleetbeat.roadside.reports.*
 import java.io.File
 import java.util.UUID
@@ -99,6 +100,15 @@ class MainActivity : ComponentActivity() {
             }
         }
         val assistantViewModel = ViewModelProvider(this, assistantFactory)[AssistantViewModel::class.java]
+        val guidedFactory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val client = HttpClient(OkHttp) { configureClient(this) }
+                return GuidedViewModel(GuidedApi(client, BuildConfig.API_BASE_URL, viewModel::accessToken),
+                    viewModel::sessionExpired) { client.close() } as T
+            }
+        }
+        val guidedViewModel = ViewModelProvider(this, guidedFactory)[GuidedViewModel::class.java]
         val reportsFactory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = ReportsViewModel(
@@ -109,6 +119,7 @@ class MainActivity : ComponentActivity() {
         }
         val reportsViewModel = ViewModelProvider(this, reportsFactory)[ReportsViewModel::class.java]
         setContent {
+            val guidedState by guidedViewModel.state.collectAsState()
             val reportsState by reportsViewModel.state.collectAsState()
             val assistantState by assistantViewModel.state.collectAsState()
             val remoteState by remoteViewModel.state.collectAsState()
@@ -193,13 +204,14 @@ class MainActivity : ComponentActivity() {
                     enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
                 else requestPermissions.launch(permissions)
             }
-            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open || remoteState.open || assistantState.open || reportsState.open)) {
+            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open || remoteState.open || assistantState.open || reportsState.open || guidedState.open)) {
                 if (reportsState.open) reportsViewModel.back()
+                else if (guidedState.open) guidedViewModel.back()
                 else if (assistantState.open) assistantViewModel.closeScreen()
                 else if (remoteState.open) remoteViewModel.disconnect(true)
                 else if (diagnosticsState.open) diagnosticsViewModel.closeScreen() else catalogViewModel.back()
             }
-            App(viewModel, catalogViewModel, diagnosticsViewModel, remoteViewModel, assistantViewModel, reportsViewModel, ::requestReportExport, ::requestVoiceInput, ::requestScan, ::requestEnable,
+            App(viewModel, catalogViewModel, diagnosticsViewModel, remoteViewModel, assistantViewModel, reportsViewModel, guidedViewModel, ::requestReportExport, ::requestVoiceInput, ::requestScan, ::requestEnable,
                 { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
                 { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) })
         }

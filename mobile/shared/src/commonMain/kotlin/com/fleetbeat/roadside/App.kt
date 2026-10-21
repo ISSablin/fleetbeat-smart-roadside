@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fleetbeat.roadside.remote.*
 import com.fleetbeat.roadside.assistant.*
+import com.fleetbeat.roadside.guided.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
 import com.fleetbeat.roadside.reports.*
@@ -28,15 +29,16 @@ import com.fleetbeat.roadside.diagnostics.DiagnosticsViewModel
 import com.fleetbeat.roadside.diagnostics.DiagnosticsScreen
 
 @Composable
-fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnosticsViewModel: DiagnosticsViewModel, remoteViewModel: RemoteViewModel, assistantViewModel: AssistantViewModel, reportsViewModel: ReportsViewModel,
+fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnosticsViewModel: DiagnosticsViewModel, remoteViewModel: RemoteViewModel, assistantViewModel: AssistantViewModel, reportsViewModel: ReportsViewModel, guidedViewModel: GuidedViewModel,
         onExportReport: () -> Unit, onVoiceInput: () -> Unit, onScan: () -> Unit, onEnableBluetooth: () -> Unit, onPermissions: () -> Unit, onLocation: () -> Unit) {
     val state by viewModel.state.collectAsState()
+    val guidedState by guidedViewModel.state.collectAsState()
     val reportsState by reportsViewModel.state.collectAsState()
     val assistantState by assistantViewModel.state.collectAsState()
     val remoteState by remoteViewModel.state.collectAsState()
     val diagnosticsState by diagnosticsViewModel.state.collectAsState()
     val catalogState by catalogViewModel.state.collectAsState()
-    LaunchedEffect(state.profile?.id) { catalogViewModel.bindUser(state.profile?.id); diagnosticsViewModel.bindUser(state.profile?.id); remoteViewModel.bindUser(state.profile?.id); assistantViewModel.bindUser(state.profile?.id); reportsViewModel.bindUser(state.profile?.id) }
+    LaunchedEffect(state.profile?.id) { catalogViewModel.bindUser(state.profile?.id); diagnosticsViewModel.bindUser(state.profile?.id); remoteViewModel.bindUser(state.profile?.id); assistantViewModel.bindUser(state.profile?.id); reportsViewModel.bindUser(state.profile?.id); guidedViewModel.bindUser(state.profile?.id) }
     LaunchedEffect(state.profile?.id) {
         reportsViewModel.bindUser(state.profile?.id)
         if (state.profile != null) {
@@ -53,6 +55,8 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             if (state.profile != null && reportsState.open) {
                 ReportsScreen(reportsViewModel, onExportReport)
+            } else if (state.profile != null && guidedState.open) {
+                GuidedScreen(guidedViewModel) { question -> guidedViewModel.closeScreen(); assistantViewModel.open(question) }
             } else if (state.profile != null && assistantState.open) {
                 AssistantScreen(assistantViewModel, onVoiceInput, reportsState.error ?: reportsState.notice)
             } else if (state.profile != null && remoteState.open) {
@@ -107,6 +111,8 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Adapter & live data") }
                         OutlinedButton(onClick = { diagnosticsViewModel.closeScreen(); remoteViewModel.open() }, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Remote diagnostics") }
+                        OutlinedButton(onClick = guidedViewModel::open, enabled = !state.loading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Guided diagnostics") }
                         OutlinedButton(onClick = { assistantViewModel.open() }, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Diagnostic assistant") }
                         OutlinedButton(onClick = reportsViewModel::open, enabled = !state.loading,
