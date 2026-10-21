@@ -1,6 +1,21 @@
 package com.fleetbeat.roadside
 
 import android.os.Bundle
+import android.os.Build
+import android.os.SystemClock
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.bluetooth.BluetoothAdapter
+import android.provider.Settings
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.fleetbeat.roadside.diagnostics.DiagnosticsViewModel
+import com.fleetbeat.roadside.diagnostics.ble.AndroidBleRepository
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,11 +57,44 @@ class MainActivity : ComponentActivity() {
             }
         }
         val catalogViewModel = ViewModelProvider(this, catalogFactory)[CatalogViewModel::class.java]
+        val diagnosticsFactory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                DiagnosticsViewModel(AndroidBleRepository(applicationContext), SystemClock::elapsedRealtime) as T
+        }
+        val diagnosticsViewModel = ViewModelProvider(this, diagnosticsFactory)[DiagnosticsViewModel::class.java]
         setContent {
             val catalogState by catalogViewModel.state.collectAsState()
             val authState by viewModel.state.collectAsState()
-            BackHandler(enabled = authState.profile != null && catalogState.open) { catalogViewModel.back() }
-            App(viewModel, catalogViewModel)
+            val diagnosticsState by diagnosticsViewModel.state.collectAsState()
+            var enableAfterPermission by remember { mutableStateOf(false) }
+            val permissions = if (Build.VERSION.SDK_INT >= 31)
+                arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+                else arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            val enableBluetooth = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+            val requestPermissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+                if (permissions.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }) {
+                    if (enableAfterPermission) enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+                    else diagnosticsViewModel.scan()
+                } else diagnosticsViewModel.permissionDenied()
+            }
+            fun requestScan() {
+                enableAfterPermission = false
+                if (permissions.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }) diagnosticsViewModel.scan()
+                else requestPermissions.launch(permissions)
+            }
+            fun requestEnable() {
+                enableAfterPermission = true
+                if (Build.VERSION.SDK_INT < 31 || checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED)
+                    enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+                else requestPermissions.launch(permissions)
+            }
+            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open)) {
+                if (diagnosticsState.open) diagnosticsViewModel.closeScreen() else catalogViewModel.back()
+            }
+            App(viewModel, catalogViewModel, diagnosticsViewModel, ::requestScan, ::requestEnable,
+                { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
+                { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) })
         }
     }
 }
