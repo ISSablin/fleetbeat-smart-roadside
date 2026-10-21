@@ -108,3 +108,21 @@ def test_server_settings_do_not_display_secret(monkeypatch):
     settings = Settings.from_env()
     assert settings.ai_client_token == "private-test-token"
     assert "private-test-token" not in repr(settings)
+
+
+def test_symptom_tree_is_authenticated_static_and_diagnostic_only(advice):
+    app, client, headers, gateway = advice
+    assert client.get("/api/v1/help-wizard/tree").status_code == 401
+    response = client.get("/api/v1/help-wizard/tree?locale=eng", headers=headers)
+    assert response.status_code == 200
+    tree = response.json()
+    assert tree["locale"] == "eng"
+    assert len(tree["situations"]) == 13
+    assert "wont_start" in {item["id"] for item in tree["situations"]}
+    assert not {"regen", "lockout", "accident", "need_tow"} & {item["id"] for item in tree["situations"]}
+    for item in tree["situations"]:
+        if item["followup"]:
+            assert item["followup"]["choices"]
+            assert all(set(choice) == {"id", "label"} for choice in item["followup"]["choices"])
+    assert gateway.calls == []
+    assert client.get("/api/v1/help-wizard/tree?locale=rus", headers=headers).status_code == 422

@@ -1,0 +1,298 @@
+{
+  "version": 4,
+  "locale": "eng",
+  "situations": [
+    {
+      "id": "ai_help",
+      "title": "Not in the list — AI help",
+      "hint": "Describe the problem in your own words (sounds, behavior, when it started)",
+      "sort": 0,
+      "entry": "freeform",
+      "followup": null
+    },
+    {
+      "id": "wont_start",
+      "title": "Won't start",
+      "hint": "Cranks but won't catch, clicks, or total silence",
+      "sort": 1,
+      "entry": "tree",
+      "followup": {
+        "question": "What happens when you turn the key or press Start?",
+        "choices": [
+          {
+            "id": "dead",
+            "label": "Total silence — dash dead or dies immediately"
+          },
+          {
+            "id": "click",
+            "label": "Clicks under the hood, but the engine won't crank"
+          },
+          {
+            "id": "spin_fast",
+            "label": "Starter spins very fast/easy (freewheeling) but never catches"
+          },
+          {
+            "id": "spin_rough",
+            "label": "Cranks normally, coughs, catches, then dies"
+          }
+        ]
+      }
+    },
+    {
+      "id": "flat_tire",
+      "title": "Wheel / tire / rim",
+      "hint": "Puncture, cut, steering shake, bent rim",
+      "sort": 2,
+      "entry": "tree",
+      "followup": {
+        "question": "What condition is the wheel in, and can you roll on it?",
+        "choices": [
+          {
+            "id": "puncture",
+            "label": "Screw/puncture — tire going down slowly"
+          },
+          {
+            "id": "damaged",
+            "label": "Tire shredded (sidewall) or rim badly bent"
+          },
+          {
+            "id": "vibration",
+            "label": "Wheel looks OK, but shakes hard in the wheel or body at speed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check_engine",
+      "title": "Check Engine",
+      "hint": "Solid, flashing, no power, warning cluster",
+      "sort": 3,
+      "entry": "tree",
+      "followup": {
+        "question": "How is the Check Engine light behaving, and how does the car drive?",
+        "choices": [
+          {
+            "id": "flash_rough",
+            "label": "Check flashing, rough misfire, no power"
+          },
+          {
+            "id": "solid_ok",
+            "label": "Check solid, car drives normally"
+          },
+          {
+            "id": "limp_mode",
+            "label": "Check solid, but car won't go (limp mode, no revs)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "brakes",
+      "title": "Brakes",
+      "hint": "Squeal, grind, soft or rock-hard pedal, vibration when braking",
+      "sort": 4,
+      "entry": "tree",
+      "followup": {
+        "question": "What exactly worries you about the brakes?",
+        "choices": [
+          {
+            "id": "squeal_noise",
+            "label": "Squeal/whistle when stopping, still brakes OK"
+          },
+          {
+            "id": "grind_metal",
+            "label": "Harsh metal grinding when you press the pedal"
+          },
+          {
+            "id": "pedal_fail",
+            "label": "Pedal soft/sinks to the floor, or rock-hard"
+          }
+        ]
+      }
+    },
+    {
+      "id": "noise",
+      "title": "Strange noise / knocks",
+      "hint": "Bump knocks, hum, whine, click on turns",
+      "sort": 5,
+      "entry": "tree",
+      "followup": {
+        "question": "What kind of noise is it, and when does it show up?",
+        "choices": [
+          {
+            "id": "suspension",
+            "label": "Dull or sharp knock from below on bumps/rails/waves"
+          },
+          {
+            "id": "bearing",
+            "label": "Rising hum/whine (like an airplane) that follows road speed"
+          },
+          {
+            "id": "cv_joint",
+            "label": "Loud click/crunch at the front when turning from a stop"
+          }
+        ]
+      }
+    },
+    {
+      "id": "overheat",
+      "title": "Engine overheating",
+      "hint": "Temp gauge in the red, steam, coolant smell",
+      "sort": 6,
+      "entry": "tree",
+      "followup": {
+        "question": "What do you see right now on the dash or under the hood?",
+        "choices": [
+          {
+            "id": "steam_cloud",
+            "label": "Steam billowing from the hood, fluid spraying"
+          },
+          {
+            "id": "gauge_only",
+            "label": "No steam, but temp needle in the red (or red temp light)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_other",
+      "title": "Other warning light (red/yellow)",
+      "hint": "Red oil can, battery icon, ABS, ESP, airbag",
+      "sort": 7,
+      "entry": "tree",
+      "followup": {
+        "question": "Which important indicator lit on the dash?",
+        "choices": [
+          {
+            "id": "oil_pressure",
+            "label": "RED oil can light (oil pressure)"
+          },
+          {
+            "id": "battery_charge",
+            "label": "RED battery icon (no charging)"
+          },
+          {
+            "id": "abs_esp",
+            "label": "Yellow ABS, skidding-car (ESP), or Brake light"
+          }
+        ]
+      }
+    },
+    {
+      "id": "transmission",
+      "title": "Transmission (AT / MT)",
+      "hint": "Shudders, delayed shifts, slips, won't engage",
+      "sort": 9,
+      "entry": "tree",
+      "followup": {
+        "question": "How exactly is the transmission behaving?",
+        "choices": [
+          {
+            "id": "kick",
+            "label": "Automatic kicks, shoves, or jerks on shifts"
+          },
+          {
+            "id": "slip",
+            "label": "Revs climb, engine roars, but the car won't accelerate (slips)"
+          },
+          {
+            "id": "stuck",
+            "label": "Gear locked, shifter stuck, or transmission limp mode"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fluid_leaks",
+      "title": "Leaks / drips under the car",
+      "hint": "Spots on asphalt, oil drip, coolant loss",
+      "sort": 10,
+      "entry": "tree",
+      "followup": {
+        "question": "What color are the fresh drips, and where did you see them?",
+        "choices": [
+          {
+            "id": "oil_dark",
+            "label": "Black or brown greasy drips under engine or gearbox"
+          },
+          {
+            "id": "coolant_bright",
+            "label": "Pink, green, or blue sweet chemical fluid"
+          },
+          {
+            "id": "clear_water",
+            "label": "Clear water dripping near the front passenger side"
+          }
+        ]
+      }
+    },
+    {
+      "id": "climate_hvac",
+      "title": "Climate / A/C / Heater",
+      "hint": "Blows hot in summer, no heat in winter, smell, noise",
+      "sort": 11,
+      "entry": "tree",
+      "followup": {
+        "question": "What's wrong with the cabin air?",
+        "choices": [
+          {
+            "id": "no_cold",
+            "label": "A/C turns on but blows warm air"
+          },
+          {
+            "id": "smell_dust",
+            "label": "Musty/mold/dust smell when the blower starts"
+          },
+          {
+            "id": "heater_cold",
+            "label": "Heater blows cold in winter (engine already warm)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "smoke_exhaust",
+      "title": "Exhaust smoke",
+      "hint": "Blue/gray, thick white, or black smoke",
+      "sort": 12,
+      "entry": "tree",
+      "followup": {
+        "question": "What color is the exhaust smoke?",
+        "choices": [
+          {
+            "id": "blue",
+            "label": "Blue/gray smoke with a burnt-oil smell"
+          },
+          {
+            "id": "black",
+            "label": "Thick black smoke, sluggish, high fuel use"
+          },
+          {
+            "id": "white_thick",
+            "label": "Thick white smoke (steam-like) that stays after warmup"
+          }
+        ]
+      }
+    },
+    {
+      "id": "leak_smell",
+      "title": "Smell / hazardous puddle",
+      "hint": "Fuel, burning smell, smoke not from the pipe",
+      "sort": 13,
+      "entry": "tree",
+      "followup": {
+        "question": "What stands out most?",
+        "choices": [
+          {
+            "id": "fuel",
+            "label": "Fuel smell / fuel puddle"
+          },
+          {
+            "id": "burn",
+            "label": "Burning smell / smoke from under hood or car"
+          }
+        ]
+      }
+    }
+  ]
+}

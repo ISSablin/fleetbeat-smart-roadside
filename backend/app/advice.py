@@ -1,5 +1,7 @@
 """Bounded diagnostic advice. No adapter access or executable tool calls."""
 from typing import Annotated, Literal
+from pathlib import Path
+import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 import httpx
@@ -69,3 +71,9 @@ async def advice(body: AdviceRequest, request: Request,
     if not isinstance(text, str) or not text.strip() or len(text) > 12000:
         raise HTTPException(status_code=502, detail="Invalid AI response")
     return AdviceResponse(body=text.strip())
+
+
+@router.get("/tree")
+def symptom_tree(user: Annotated[User, Depends(current_user)], locale: Literal["eng"] = "eng") -> dict:
+    """Static diagnostic symptom questions. Loading this list does not call AI."""
+    return json.loads(Path(__file__).with_name("symptoms.json").read_text(encoding="utf-8"))
