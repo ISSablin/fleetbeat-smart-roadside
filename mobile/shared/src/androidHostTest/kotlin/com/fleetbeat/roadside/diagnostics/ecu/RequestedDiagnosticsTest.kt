@@ -109,6 +109,17 @@ class RequestedDiagnosticsTest {
         vm.join(); runCurrent(); vm.readEcuValues(); runCurrent()
         assertEquals(2, vm.state.value.requestedValues.size)
     }
+    @Test fun rejoiningAnotherSessionClearsPreviousReadSnapshots() = fixture { vm, pipe, _ ->
+        vm.readEcuValues(); runCurrent(); vm.readEcuFaults(); runCurrent()
+        assertTrue(vm.state.value.requestedValues.isNotEmpty())
+        pipe.connection.value = BrokerState.Error; runCurrent()
+        vm.code("OTHER"); vm.join(); runCurrent()
+        assertTrue(vm.state.value.linked)
+        assertTrue(vm.state.value.requestedValues.isEmpty())
+        assertTrue(vm.state.value.ecuFaults.isEmpty())
+        assertNull(vm.state.value.faultsReadAt)
+        assertNull(vm.state.value.ecuProfile)
+    }
     @Test fun broadcastListeningAndUnknownSessionDoNotSendRequests() = fixture { vm, pipe, _ ->
         vm.startListening(); runCurrent()
         vm.readEcuValues(); runCurrent()

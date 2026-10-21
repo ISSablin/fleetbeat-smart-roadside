@@ -105,7 +105,9 @@ class RemoteViewModel(private val sessions: RemoteSessions, private val pipe: Re
             val (login, token) = credentials()
             check(login.isNotBlank() && token.isNotBlank()) { "Sign in again before joining a session." }
             mutable.update { it.copy(status = "Looking up session…", frames = 0, values = emptyList(), faults = emptyList(),
-                rxBytes = 0, txBytes = 0, lastResponse = null, version = null, voltage = null) }
+                rxBytes = 0, txBytes = 0, lastResponse = null, version = null, voltage = null,
+                requestedValues = emptyList(), ecuFaults = emptyList(), faultsReadAt = null, ecuProfile = null,
+                ecuStatus = null, ecuBusy = false, catalogWarning = null) }
             data.reset(); wire.reset()
             sessions.join(code)
             activeCode = code

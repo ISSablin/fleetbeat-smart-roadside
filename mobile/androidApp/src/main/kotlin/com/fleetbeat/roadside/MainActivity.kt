@@ -2,6 +2,14 @@ package com.fleetbeat.roadside
 
 import com.fleetbeat.roadside.remote.*
 import com.fleetbeat.roadside.assistant.*
+import com.fleetbeat.roadside.reports.*
+import java.io.File
+import java.util.UUID
+import java.util.Date
+import java.util.TimeZone
+import java.text.SimpleDateFormat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.fleetbeat.roadside.diagnostics.ecu.DiagnosticCatalogApi
 import android.os.Bundle
 import android.os.Build
@@ -91,12 +99,43 @@ class MainActivity : ComponentActivity() {
             }
         }
         val assistantViewModel = ViewModelProvider(this, assistantFactory)[AssistantViewModel::class.java]
+        val reportsFactory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = ReportsViewModel(
+                AndroidReportStore(File(filesDir, "diagnostic-reports")), BuildConfig.API_BASE_URL,
+                System::currentTimeMillis, SystemClock::elapsedRealtime,
+                { at -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(at)) },
+                { UUID.randomUUID().toString() }) as T
+        }
+        val reportsViewModel = ViewModelProvider(this, reportsFactory)[ReportsViewModel::class.java]
         setContent {
+            val reportsState by reportsViewModel.state.collectAsState()
             val assistantState by assistantViewModel.state.collectAsState()
             val remoteState by remoteViewModel.state.collectAsState()
             val catalogState by catalogViewModel.state.collectAsState()
             val authState by viewModel.state.collectAsState()
             val diagnosticsState by diagnosticsViewModel.state.collectAsState()
+            var reportExportToken by rememberSaveable { mutableStateOf<Int?>(null) }
+            val exportReport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+                val token = reportExportToken
+                reportExportToken = null
+                if (token != null) {
+                    if (uri == null) reportsViewModel.cancelExport(token)
+                    else reportsViewModel.writeExport(token) { text ->
+                        withContext(Dispatchers.IO) {
+                            val output = contentResolver.openOutputStream(uri, "wt") ?: error("Could not open export location.")
+                            output.bufferedWriter(Charsets.UTF_8).use { it.write(text) }
+                        }
+                    }
+                }
+            }
+            fun requestReportExport() {
+                val ticket = reportsViewModel.beginExport() ?: return
+                reportExportToken = ticket.token
+                try { exportReport.launch(ticket.filename) }
+                catch (_: ActivityNotFoundException) { reportExportToken = null; reportsViewModel.cancelExport(ticket.token, failed = true) }
+                catch (_: SecurityException) { reportExportToken = null; reportsViewModel.cancelExport(ticket.token, failed = true) }
+            }
             var speechRequest by rememberSaveable { mutableStateOf<Int?>(null) }
             val speechInput = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 val token = speechRequest
@@ -154,12 +193,13 @@ class MainActivity : ComponentActivity() {
                     enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
                 else requestPermissions.launch(permissions)
             }
-            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open || remoteState.open || assistantState.open)) {
-                if (assistantState.open) assistantViewModel.closeScreen()
+            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open || remoteState.open || assistantState.open || reportsState.open)) {
+                if (reportsState.open) reportsViewModel.back()
+                else if (assistantState.open) assistantViewModel.closeScreen()
                 else if (remoteState.open) remoteViewModel.disconnect(true)
                 else if (diagnosticsState.open) diagnosticsViewModel.closeScreen() else catalogViewModel.back()
             }
-            App(viewModel, catalogViewModel, diagnosticsViewModel, remoteViewModel, assistantViewModel, ::requestVoiceInput, ::requestScan, ::requestEnable,
+            App(viewModel, catalogViewModel, diagnosticsViewModel, remoteViewModel, assistantViewModel, reportsViewModel, ::requestReportExport, ::requestVoiceInput, ::requestScan, ::requestEnable,
                 { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
                 { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) })
         }
