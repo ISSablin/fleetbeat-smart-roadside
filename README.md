@@ -137,3 +137,35 @@ ECU replies use classical CAN ISO-TP with normal addressing. The receiver valida
 The DIAG simulator's fault layout is explicitly `59 02` followed by four-byte records (three-byte code and status). It omits the standard UDS status-availability byte. That parser is confined to the DIAG bench profile and must not be reused as a generic UDS fault parser.
 
 After a successful read, the app stops the remote stream. Disconnect, Back, sign-out and broker loss cancel pending ECU reads. A read failure reports an error rather than an empty fault report. Clearing faults, actuator commands, security access and regeneration are not included. Physical ECU requested reads over Bluetooth have not been enabled.
+
+
+## Diagnostic assistant
+
+Open **Diagnostic assistant** from the account screen. Type a question or choose **Voice input** to speak. Android's installed speech recognition service returns text, which is appended to the question for editing. It may require internet access and its own microphone permission. The app receives text and does not save audio recordings. Cancelled or failed voice input preserves existing text. Questions remain limited to 600 characters; review the result and tap **Get guidance** to send it. The question is sent to the configured account API and its AI provider. No measurements, account details or adapter commands are automatically attached. The signed-in account token authorizes the request; AI gateway credentials and the provider API key stay on the server.
+
+After a requested ECU read, **Ask AI about these results** prepares an editable question containing the simulator/profile context, snapshot ages, requested values and up to five fault records. Opening this preview disconnects the remote session. Review and edit the exact text before sending it; preparing a question does not call the AI service.
+
+The assistant offers explanations and diagnostic checks. It has no connection to the adapter command path and cannot execute AI-suggested procedures. Responses are labelled as AI-generated. Failed requests, server fallbacks and missing AI configuration are shown as errors rather than generated guidance. There are no automatic retries. **Stop waiting** cancels the mobile wait; it cannot cancel work already running on the server. Back and sign-out clear the mobile question and response. The app does not persist an assistant conversation history.
+
+Mobile uses authenticated `POST /api/v1/help-wizard/advice` on `apiBaseUrl`. Its independent request timeout is 75 seconds. The backend implements the freeform English advice subset of that route, requiring active-account authentication and limiting the question to 600 characters and upstream output to 1024 tokens. It requests text completion only, with no executable tools. No regeneration, clearing, actuator or security-access workflow is provided.
+
+## Run the backend with Compose
+
+The Compose file packages the account, session-metadata and diagnostic-advice API. It does not provision the vehicle catalog, MQTT broker, AI provider, administrator UI or realtime chat service. The mobile defaults continue to use the existing deployed services.
+
+On a host with a running Docker engine and Docker Compose, run from the repository root:
+
+```bash
+cp .env.example .env
+# Edit .env if enabling AI guidance.
+docker compose -p fleetbeat-roadside config --quiet
+docker compose -p fleetbeat-roadside up -d --build
+curl --fail http://127.0.0.1:8000/health
+docker compose -p fleetbeat-roadside exec api python -m app.manage create-user technician@example.com
+```
+
+The last command prompts for the account password. The stable project name `fleetbeat-roadside` keeps the same named data volume across checkouts. That volume stores SQLite records and signing keys. `docker compose -p fleetbeat-roadside down` stops containers while retaining the volume. Inspect health and startup failures with `docker compose -p fleetbeat-roadside ps` and `docker compose -p fleetbeat-roadside logs --tail=100 api`.
+
+AI guidance is optional. `ROADSIDE_AI_GATEWAY_URL` points to a trusted gateway implementing `POST /v1/complete`. `ROADSIDE_AI_CLIENT_TOKEN` is that gateway's server-to-server client credential, **not the Anthropic API key** and not a technician's login token. The provider key stays on the gateway. With these settings absent, accounts and session routes remain available while advice returns HTTP 503. Real `.env` files are ignored by Git.
+
+The API binds to host loopback port 8000. Put an HTTPS reverse proxy in front of it before connecting remote mobile clients. When changing the account API, configure the catalog and MQTT broker to trust that API's signing keys, issuer and audience before testing those integrations. Validate the new hostname and services before changing mobile `apiBaseUrl`. Compose runs the API only; the catalog, MQTT and AI services require separate configuration.

@@ -1,12 +1,17 @@
 package com.fleetbeat.roadside
 
 import com.fleetbeat.roadside.remote.*
+import com.fleetbeat.roadside.assistant.*
 import com.fleetbeat.roadside.diagnostics.ecu.DiagnosticCatalogApi
 import android.os.Bundle
 import android.os.Build
 import android.os.SystemClock
 import android.Manifest
 import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.speech.RecognizerIntent
+import java.util.Locale
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.pm.PackageManager
 import android.bluetooth.BluetoothAdapter
 import android.provider.Settings
@@ -77,11 +82,56 @@ class MainActivity : ComponentActivity() {
             }
         }
         val remoteViewModel = ViewModelProvider(this, remoteFactory)[RemoteViewModel::class.java]
+        val assistantFactory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val client = HttpClient(OkHttp) { configureClient(this) }
+                return AssistantViewModel(AdviceApi(client, BuildConfig.API_BASE_URL, viewModel::accessToken),
+                    viewModel::sessionExpired) { client.close() } as T
+            }
+        }
+        val assistantViewModel = ViewModelProvider(this, assistantFactory)[AssistantViewModel::class.java]
         setContent {
+            val assistantState by assistantViewModel.state.collectAsState()
             val remoteState by remoteViewModel.state.collectAsState()
             val catalogState by catalogViewModel.state.collectAsState()
             val authState by viewModel.state.collectAsState()
             val diagnosticsState by diagnosticsViewModel.state.collectAsState()
+            var speechRequest by rememberSaveable { mutableStateOf<Int?>(null) }
+            val speechInput = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                val token = speechRequest
+                speechRequest = null
+                if (token != null) {
+                    val transcript = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull { it.isNotBlank() }
+                    when (result.resultCode) {
+                        RESULT_OK -> assistantViewModel.voiceResult(token, transcript)
+                        RESULT_CANCELED -> assistantViewModel.voiceResult(token, cancelled = true)
+                        RecognizerIntent.RESULT_NO_MATCH -> assistantViewModel.voiceResult(token)
+                        RecognizerIntent.RESULT_AUDIO_ERROR -> assistantViewModel.voiceResult(token,
+                            failure = "The speech service could not use the microphone. Check its microphone permission and try again.")
+                        else -> assistantViewModel.voiceResult(token,
+                            failure = "Speech recognition is unavailable right now. Check your connection or type your question.")
+                    }
+                }
+            }
+            fun requestVoiceInput() {
+                val token = assistantViewModel.beginVoiceInput() ?: return
+                speechRequest = token
+                try {
+                    speechInput.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+                        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Describe the symptoms or fault codes")
+                    })
+                } catch (_: ActivityNotFoundException) {
+                    speechRequest = null
+                    assistantViewModel.voiceResult(token, failure = "No speech recognition service is installed. Enable a speech service or type your question.")
+                } catch (_: SecurityException) {
+                    speechRequest = null
+                    assistantViewModel.voiceResult(token, failure = "Speech recognition is blocked. Check the speech service permissions or type your question.")
+                }
+            }
             var enableAfterPermission by remember { mutableStateOf(false) }
             val permissions = if (Build.VERSION.SDK_INT >= 31)
                 arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
@@ -104,11 +154,12 @@ class MainActivity : ComponentActivity() {
                     enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
                 else requestPermissions.launch(permissions)
             }
-            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open || remoteState.open)) {
-                if (remoteState.open) remoteViewModel.disconnect(true)
+            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open || remoteState.open || assistantState.open)) {
+                if (assistantState.open) assistantViewModel.closeScreen()
+                else if (remoteState.open) remoteViewModel.disconnect(true)
                 else if (diagnosticsState.open) diagnosticsViewModel.closeScreen() else catalogViewModel.back()
             }
-            App(viewModel, catalogViewModel, diagnosticsViewModel, remoteViewModel, ::requestScan, ::requestEnable,
+            App(viewModel, catalogViewModel, diagnosticsViewModel, remoteViewModel, assistantViewModel, ::requestVoiceInput, ::requestScan, ::requestEnable,
                 { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
                 { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) })
         }

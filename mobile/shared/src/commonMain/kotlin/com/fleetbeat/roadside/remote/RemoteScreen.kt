@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.sp
 import com.fleetbeat.roadside.diagnostics.diagnosticReadings
 
 @Composable
-fun RemoteScreen(viewModel: RemoteViewModel) {
+fun RemoteScreen(viewModel: RemoteViewModel, onExplain: () -> Unit) {
     val state by viewModel.state.collectAsState()
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(horizontal = 20.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -71,6 +71,12 @@ fun RemoteScreen(viewModel: RemoteViewModel) {
                                     modifier = Modifier.fillMaxWidth()) { Text("Read ECU values") }
                                 OutlinedButton(onClick = viewModel::readEcuFaults, enabled = !state.busy && !state.listening,
                                     modifier = Modifier.fillMaxWidth()) { Text("Read ECU fault codes") }
+                                if (state.requestedValues.isNotEmpty() || state.faultsReadAt != null) {
+                                    OutlinedButton(onClick = onExplain, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                                        Text("Ask AI about these results")
+                                    }
+                                    Text("Opens an editable question and disconnects this session.", fontSize = 13.sp)
+                                }
                                 state.ecuStatus?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
                                 if (state.ecuBusy) Text("Reading… Use Disconnect or Back to cancel.")
                                 state.catalogWarning?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
