@@ -95,3 +95,17 @@ Run mobile catalog tests on your computer without an emulator:
 cd mobile
 ./gradlew :shared:testAndroidHostTest
 ```
+
+## Bluetooth adapter and truck broadcasts
+
+Open **Adapter & live data** from the account screen or selected control-unit summary. Power the ITD/ELD BLE adapter, disconnect other apps from it, and choose **Scan adapters**. Select the discovered adapter to connect.
+
+Android 12 and later require Bluetooth scan/connect permissions. Android 11 and earlier require Location permission and enabled Location services for BLE scanning. The app requests these permissions when you scan. Location coordinates are not collected.
+
+The adapter exposes its firmware and voltage independently of CAN bus data. Choose the bus speed (250 or 500 kbit/s), then **Start listening**. Listening starts only after the adapter confirms the requested configuration. The app uses 29-bit J1939 listen mode and does not send diagnostic requests or fault-clearing commands to the truck.
+
+Supported broadcast measurements include engine RPM, vehicle speed, coolant temperature, vehicle voltage, engine hours and total distance. Unavailable data remains unavailable; measurements older than five seconds are marked stale. Active DM1 fault reports include source address, SPN, FMI and occurrence count when supplied. Multi-packet BAM reports are assembled separately for each source; legacy SPN encodings are identified without guessing their SPN.
+
+A Bluetooth connection does not prove the truck is broadcasting. If the frame count remains zero, check adapter wiring, ignition, the selected speed and whether the connected ECU sends J1939. Catalog selection does not turn a truck-wide broadcast into a measurement from the selected control unit.
+
+**Stop listening** stops the stream. **Disconnect**, leaving the adapter screen or signing out releases the connection. The app does not run a background diagnostic service.

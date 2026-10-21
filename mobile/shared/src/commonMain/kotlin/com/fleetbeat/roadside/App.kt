@@ -19,12 +19,16 @@ import androidx.compose.ui.unit.sp
 import com.fleetbeat.roadside.auth.AuthViewModel
 import com.fleetbeat.roadside.catalog.CatalogViewModel
 import com.fleetbeat.roadside.catalog.CatalogScreen
+import com.fleetbeat.roadside.diagnostics.DiagnosticsViewModel
+import com.fleetbeat.roadside.diagnostics.DiagnosticsScreen
 
 @Composable
-fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel) {
+fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnosticsViewModel: DiagnosticsViewModel,
+        onScan: () -> Unit, onEnableBluetooth: () -> Unit, onPermissions: () -> Unit, onLocation: () -> Unit) {
     val state by viewModel.state.collectAsState()
+    val diagnosticsState by diagnosticsViewModel.state.collectAsState()
     val catalogState by catalogViewModel.state.collectAsState()
-    LaunchedEffect(state.profile?.id) { catalogViewModel.bindUser(state.profile?.id) }
+    LaunchedEffect(state.profile?.id) { catalogViewModel.bindUser(state.profile?.id); diagnosticsViewModel.bindUser(state.profile?.id) }
     var passwordVisible by remember { mutableStateOf(false) }
     MaterialTheme(colorScheme = darkColorScheme(
         primary = Color(0xFFF7AA32), onPrimary = Color(0xFF151B25),
@@ -32,8 +36,10 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel) {
         onBackground = Color(0xFFF2F5F8), onSurface = Color(0xFFF2F5F8),
     )) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            if (state.profile != null && catalogState.open) {
-                CatalogScreen(catalogViewModel)
+            if (state.profile != null && diagnosticsState.open) {
+                DiagnosticsScreen(diagnosticsViewModel, onScan, onEnableBluetooth, onPermissions, onLocation)
+            } else if (state.profile != null && catalogState.open) {
+                CatalogScreen(catalogViewModel, diagnosticsViewModel::open)
             } else {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
                 .imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -71,6 +77,8 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel) {
                     } else {
                         Button(onClick = catalogViewModel::open, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Select vehicle") }
+                        OutlinedButton(onClick = diagnosticsViewModel::open, enabled = !state.loading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Adapter & live data") }
                         OutlinedButton(onClick = viewModel::refresh, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Refresh profile") }
                         OutlinedButton(onClick = viewModel::logout, enabled = !state.loading,

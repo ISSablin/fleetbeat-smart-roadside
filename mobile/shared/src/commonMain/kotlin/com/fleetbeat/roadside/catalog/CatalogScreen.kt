@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun CatalogScreen(viewModel: CatalogViewModel) {
+fun CatalogScreen(viewModel: CatalogViewModel, onConnectAdapter: () -> Unit) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val state by viewModel.state.collectAsState()
@@ -68,6 +68,9 @@ fun CatalogScreen(viewModel: CatalogViewModel) {
                             unit?.volume?.takeIf { it.isNotBlank() }?.let { Text("Displacement: $it") }
                             unit?.gearbox?.takeIf { it.isNotBlank() }?.let { Text("Transmission: $it") }
                         }
+                    }
+                    Button(onClick = onConnectAdapter, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                        Text("Adapter & live data")
                     }
                     OutlinedButton(onClick = viewModel::back, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
                         Text("Change control unit")
