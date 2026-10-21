@@ -2,6 +2,8 @@ package com.fleetbeat.roadside.remote
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,6 +60,53 @@ fun RemoteScreen(viewModel: RemoteViewModel) {
             }
             if (state.linked) {
                 item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Requested ECU diagnostics", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            if (state.code == "DIAG") {
+                                Text("DIAG engine · simulated ECU. Read current values or stored fault records on demand.")
+                                state.ecuProfile?.let { Text(it, fontSize = 13.sp) }
+                                if (state.listening) Text("Stop broadcast listening to read the ECU.")
+                                Button(onClick = viewModel::readEcuValues, enabled = !state.busy && !state.listening,
+                                    modifier = Modifier.fillMaxWidth()) { Text("Read ECU values") }
+                                OutlinedButton(onClick = viewModel::readEcuFaults, enabled = !state.busy && !state.listening,
+                                    modifier = Modifier.fillMaxWidth()) { Text("Read ECU fault codes") }
+                                state.ecuStatus?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                                if (state.ecuBusy) Text("Reading… Use Disconnect or Back to cancel.")
+                                state.catalogWarning?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            } else Text("Requested reads currently support the DIAG engine profile only. Other sessions support broadcast listening.")
+                        }
+                    }
+                }
+                items(state.requestedValues, key = { "requested:" + it.label }) { value ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            val seconds = (state.now - value.at).coerceAtLeast(0) / 1000
+                            Text("ECU · ${value.label}", fontWeight = FontWeight.Medium)
+                            Text(value.value?.let { "$it ${value.unit}" } ?: "Unavailable", fontSize = 24.sp)
+                            Text("Read ${seconds}s ago${if (seconds > 5) " · stale snapshot" else ""}", fontSize = 13.sp)
+                        }
+                    }
+                }
+                state.faultsReadAt?.let { at ->
+                    item {
+                        Text("ECU fault records · ${state.ecuFaults.size}", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("Read ${(state.now - at).coerceAtLeast(0) / 1000}s ago · snapshot")
+                        if (state.ecuFaults.isEmpty()) Text("The ECU returned no matching fault records.")
+                    }
+                }
+                itemsIndexed(state.ecuFaults, key = { index, code -> "ecu:$index:${code.raw}" }) { _, code ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Code ${code.raw}", fontWeight = FontWeight.Bold)
+                            if (code.label.isNotBlank()) Text(code.label)
+                            if (code.description.isNotBlank()) Text(code.description)
+                            Text("Status 0x${code.status.toString(16).uppercase().padStart(2, '0')}", fontSize = 13.sp)
+                        }
+                    }
+                }
+                item {
+                    Text("Broadcast listening", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text("Remote CAN speed", fontWeight = FontWeight.Medium)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         listOf(250, 500).forEach { speed ->
@@ -69,7 +118,7 @@ fun RemoteScreen(viewModel: RemoteViewModel) {
                         enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
                         Text(if (state.listening) "Stop listening" else "Start listening")
                     }
-                    Text("${state.frames} remote frames received")
+                    Text("${state.frames} broadcast frames received")
                 }
                 diagnosticReadings(state.listening, state.values, state.faults, state.now)
             }

@@ -117,10 +117,23 @@ Open **Remote diagnostics** from the account screen. Enter the session code supp
 
 The technician app first joins through the authenticated account API, then connects to MQTT with the current account login and access token. It subscribes to `adapter/{code}/up` and sends adapter commands to `adapter/{code}/down`. A matching adapter status response is required before the screen shows a connection. **Check adapter** sends another status request. The last response age and received/sent byte counts help distinguish a reachable broker from a responding adapter.
 
-Choose the remote CAN speed and **Start listening** to view J1939 broadcasts and DM1 faults. Decoding and stale-value handling are shared with local Bluetooth. No fault-clearing, actuator, DPF regeneration or security-access procedures are included. Vehicle-specific requested diagnostics are not available yet.
+Choose the remote CAN speed and **Start listening** to view J1939 broadcasts and DM1 faults. Decoding and stale-value handling are shared with local Bluetooth. No fault-clearing, actuator, DPF regeneration or security-access procedures are included. Requested ECU reads are available for the DIAG engine profile as described below. Other ECU profiles are not supported yet.
 
 This app provides the technician side. A vehicle-side app or simulator must already be hosting the session. The default broker is `cardb3.truck-inspect.com:8822`, using the existing deployment's MQTT/TCP transport. Override it at build time with `-PmqttHost=your-broker.example.com -PmqttPort=1883`; this is independent of `-PapiBaseUrl`. Alternate brokers must authenticate the API's tokens and authorize session topics. Broker authentication/authorization configuration is not bundled with the backend here.
 
 **Stop listening** waits for an adapter response. **Disconnect**, Back and sign-out release the MQTT connection and clear remote readings. When a stream has been requested, disconnect attempts to stop it before closing; loss of network connectivity can prevent that stop command from reaching the remote side. There is no automatic reconnect or background diagnostic service.
 
 The backend exposes authenticated `POST /api/v1/remote/sessions`, `GET /api/v1/remote/sessions/{code}` and `POST /api/v1/remote/sessions/join`. Creation allocates a server-generated code valid for 24 hours; joining records the join time. These routes store metadata only. Session codes identify MQTT topics; they do not replace broker authorization. The local backend seeds no simulator sessions. Mobile defaults continue to use the existing deployed API and DIAG simulator.
+
+
+## Requested ECU diagnostics
+
+Join **DIAG**, then use **Read ECU values** or **Read ECU fault codes**. Stop broadcast listening first. These are one-shot simulated ECU snapshots, with their read times shown separately from broadcast measurements. Requested values include engine RPM and coolant temperature. Fault records include raw three-byte codes, ECU status bytes and catalog descriptions when available; a failed description lookup preserves the raw records.
+
+The app loads protocol 5935 from the deployed catalog and requires its supported 500 kbit/s, 29-bit CAN address pair: tester TX `18DA00F9`, ECU RX `18DAF900`. It confirms active mode and the exact receive filter before sending any ECU request. The implementation sends only three fixed reads: `22 F4 0C` (RPM), `22 F4 67` (coolant) and `19 02 AF` (fault records). It does not execute catalog initialization blobs or arbitrary commands. Other sessions continue to support broadcasts; selecting a catalog control unit does not enable unsupported requested reads.
+
+ECU replies use classical CAN ISO-TP with normal addressing. The receiver validates message lengths, sequence numbers, source ID and the expected service/DID. It sends flow control for multi-frame responses, limits payloads to 1024 bytes, bounds response-pending replies, and applies transfer/request timeouts. CAN FD, ISO-TP extended addressing and segmented request transmission are not supported.
+
+The DIAG simulator's fault layout is explicitly `59 02` followed by four-byte records (three-byte code and status). It omits the standard UDS status-availability byte. That parser is confined to the DIAG bench profile and must not be reused as a generic UDS fault parser.
+
+After a successful read, the app stops the remote stream. Disconnect, Back, sign-out and broker loss cancel pending ECU reads. A read failure reports an error rather than an empty fault report. Clearing faults, actuator commands, security access and regeneration are not included. Physical ECU requested reads over Bluetooth have not been enabled.

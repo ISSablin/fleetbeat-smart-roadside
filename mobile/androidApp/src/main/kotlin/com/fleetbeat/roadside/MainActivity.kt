@@ -1,6 +1,7 @@
 package com.fleetbeat.roadside
 
 import com.fleetbeat.roadside.remote.*
+import com.fleetbeat.roadside.diagnostics.ecu.DiagnosticCatalogApi
 import android.os.Bundle
 import android.os.Build
 import android.os.SystemClock
@@ -71,7 +72,8 @@ class MainActivity : ComponentActivity() {
                 return RemoteViewModel(RemoteApi(client, BuildConfig.API_BASE_URL, viewModel::accessToken),
                     AndroidRemotePipe(BuildConfig.MQTT_HOST, BuildConfig.MQTT_PORT),
                     { (viewModel.state.value.profile?.login ?: "") to viewModel.accessToken() },
-                    SystemClock::elapsedRealtime, viewModel::sessionExpired) { client.close() } as T
+                    SystemClock::elapsedRealtime, viewModel::sessionExpired,
+                    DiagnosticCatalogApi(client, BuildConfig.CAR_API_BASE_URL, viewModel::accessToken)) { client.close() } as T
             }
         }
         val remoteViewModel = ViewModelProvider(this, remoteFactory)[RemoteViewModel::class.java]
