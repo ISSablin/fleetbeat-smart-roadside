@@ -98,25 +98,34 @@ fun DiagnosticsScreen(viewModel: DiagnosticsViewModel, onScan: () -> Unit,
                     Text(if (state.listening) "Listening · ${state.frames} frames received" else "Listening is stopped",
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                item { Text(if (state.listening) "Live values" else "Last received values", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
-                if (state.values.isEmpty()) item { Text("Waiting for truck broadcasts. Missing values are not shown as zero.") }
-                items(state.values, key = { "${it.key}:${it.source}" }) { value ->
-                    val stale = state.now - value.receivedAt > 5000
+                diagnosticReadings(state.listening, state.values, state.faults, state.now)
+            }
+        }
+    }
+}
+
+fun androidx.compose.foundation.lazy.LazyListScope.diagnosticReadings(
+    listening: Boolean, values: List<LiveValue>, faults: List<FaultReport>, now: Long,
+) {
+                item { Text(if (listening) "Live values" else "Last received values", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                if (values.isEmpty()) item { Text("Waiting for truck broadcasts. Missing values are not shown as zero.") }
+                items(values, key = { "${it.key}:${it.source}" }) { value ->
+                    val stale = now - value.receivedAt > 5000
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(value.label, fontWeight = FontWeight.Medium)
                             Text(if (stale) "Stale" else value.value?.let { "${number(it)} ${value.unit}" } ?: "Unavailable", fontSize = 24.sp)
-                            Text("Source ${source(value.source)} · ${((state.now - value.receivedAt).coerceAtLeast(0) / 1000)}s ago",
+                            Text("Source ${source(value.source)} · ${((now - value.receivedAt).coerceAtLeast(0) / 1000)}s ago",
                                 fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
                 item { Text("Active fault reports", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
-                if (state.faults.isEmpty()) item { Text("No DM1 fault message received yet.") }
-                items(state.faults, key = { it.source }) { report ->
+                if (faults.isEmpty()) item { Text("No DM1 fault message received yet.") }
+                items(faults, key = { it.source }) { report ->
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            val stale = state.now - report.receivedAt > 5000
+                            val stale = now - report.receivedAt > 5000
                             Text("Source ${source(report.source)}${if (stale) " · stale report" else ""}", fontWeight = FontWeight.Medium)
                             if (report.codes.isEmpty()) Text("No active faults reported by this ECU.")
                             report.codes.forEach { code ->
@@ -126,9 +135,6 @@ fun DiagnosticsScreen(viewModel: DiagnosticsViewModel, onScan: () -> Unit,
                         }
                     }
                 }
-            }
-        }
-    }
 }
 
 private fun number(value: Double): String = ((value * 10).roundToLong() / 10.0).toString()

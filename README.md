@@ -109,3 +109,18 @@ Supported broadcast measurements include engine RPM, vehicle speed, coolant temp
 A Bluetooth connection does not prove the truck is broadcasting. If the frame count remains zero, check adapter wiring, ignition, the selected speed and whether the connected ECU sends J1939. Catalog selection does not turn a truck-wide broadcast into a measurement from the selected control unit.
 
 **Stop listening** stops the stream. **Disconnect**, leaving the adapter screen or signing out releases the connection. The app does not run a background diagnostic service.
+
+
+## Remote diagnostics
+
+Open **Remote diagnostics** from the account screen. Enter the session code supplied by the vehicle-side app, then **Join session**. **Use DIAG simulator** fills the shared diagnostic simulator code; its readings are simulated and its listening settings are shared with other clients.
+
+The technician app first joins through the authenticated account API, then connects to MQTT with the current account login and access token. It subscribes to `adapter/{code}/up` and sends adapter commands to `adapter/{code}/down`. A matching adapter status response is required before the screen shows a connection. **Check adapter** sends another status request. The last response age and received/sent byte counts help distinguish a reachable broker from a responding adapter.
+
+Choose the remote CAN speed and **Start listening** to view J1939 broadcasts and DM1 faults. Decoding and stale-value handling are shared with local Bluetooth. No fault-clearing, actuator, DPF regeneration or security-access procedures are included. Vehicle-specific requested diagnostics are not available yet.
+
+This app provides the technician side. A vehicle-side app or simulator must already be hosting the session. The default broker is `cardb3.truck-inspect.com:8822`, using the existing deployment's MQTT/TCP transport. Override it at build time with `-PmqttHost=your-broker.example.com -PmqttPort=1883`; this is independent of `-PapiBaseUrl`. Alternate brokers must authenticate the API's tokens and authorize session topics. Broker authentication/authorization configuration is not bundled with the backend here.
+
+**Stop listening** waits for an adapter response. **Disconnect**, Back and sign-out release the MQTT connection and clear remote readings. When a stream has been requested, disconnect attempts to stop it before closing; loss of network connectivity can prevent that stop command from reaching the remote side. There is no automatic reconnect or background diagnostic service.
+
+The backend exposes authenticated `POST /api/v1/remote/sessions`, `GET /api/v1/remote/sessions/{code}` and `POST /api/v1/remote/sessions/join`. Creation allocates a server-generated code valid for 24 hours; joining records the join time. These routes store metadata only. Session codes identify MQTT topics; they do not replace broker authorization. The local backend seeds no simulator sessions. Mobile defaults continue to use the existing deployed API and DIAG simulator.

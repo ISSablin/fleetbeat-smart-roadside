@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, text
 
 from app.auth.routes import router as auth_router
+from app.remote import router as remote_router
 from app.auth.tokens import TokenService
 from app.config import Settings
 from app.db import get_session, open_database
@@ -40,6 +41,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     application.include_router(auth_router)
+    application.include_router(remote_router)
 
     @application.get("/health", response_model=HealthResponse, tags=["health"])
     def health(session: Annotated[Session, Depends(get_session)]) -> HealthResponse:

@@ -1,5 +1,6 @@
 package com.fleetbeat.roadside
 
+import com.fleetbeat.roadside.remote.*
 import android.os.Bundle
 import android.os.Build
 import android.os.SystemClock
@@ -63,7 +64,19 @@ class MainActivity : ComponentActivity() {
                 DiagnosticsViewModel(AndroidBleRepository(applicationContext), SystemClock::elapsedRealtime) as T
         }
         val diagnosticsViewModel = ViewModelProvider(this, diagnosticsFactory)[DiagnosticsViewModel::class.java]
+        val remoteFactory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val client = HttpClient(OkHttp) { configureClient(this) }
+                return RemoteViewModel(RemoteApi(client, BuildConfig.API_BASE_URL, viewModel::accessToken),
+                    AndroidRemotePipe(BuildConfig.MQTT_HOST, BuildConfig.MQTT_PORT),
+                    { (viewModel.state.value.profile?.login ?: "") to viewModel.accessToken() },
+                    SystemClock::elapsedRealtime, viewModel::sessionExpired) { client.close() } as T
+            }
+        }
+        val remoteViewModel = ViewModelProvider(this, remoteFactory)[RemoteViewModel::class.java]
         setContent {
+            val remoteState by remoteViewModel.state.collectAsState()
             val catalogState by catalogViewModel.state.collectAsState()
             val authState by viewModel.state.collectAsState()
             val diagnosticsState by diagnosticsViewModel.state.collectAsState()
@@ -89,10 +102,11 @@ class MainActivity : ComponentActivity() {
                     enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
                 else requestPermissions.launch(permissions)
             }
-            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open)) {
-                if (diagnosticsState.open) diagnosticsViewModel.closeScreen() else catalogViewModel.back()
+            BackHandler(enabled = authState.profile != null && (catalogState.open || diagnosticsState.open || remoteState.open)) {
+                if (remoteState.open) remoteViewModel.disconnect(true)
+                else if (diagnosticsState.open) diagnosticsViewModel.closeScreen() else catalogViewModel.back()
             }
-            App(viewModel, catalogViewModel, diagnosticsViewModel, ::requestScan, ::requestEnable,
+            App(viewModel, catalogViewModel, diagnosticsViewModel, remoteViewModel, ::requestScan, ::requestEnable,
                 { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
                 { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) })
         }
