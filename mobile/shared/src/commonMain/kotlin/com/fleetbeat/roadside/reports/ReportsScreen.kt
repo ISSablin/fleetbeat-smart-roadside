@@ -18,7 +18,7 @@ fun SaveReportDialog(viewModel: ReportsViewModel) {
     AlertDialog(onDismissRequest = viewModel::dismissDraft, title = { Text("Save diagnostic report") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(report.capturedLabel)
-            if (report.simulated) Text("Simulated DIAG data", color = MaterialTheme.colorScheme.primary)
+            if (report.simulated) Text("Simulated data", color = MaterialTheme.colorScheme.primary)
             Text("${report.values.size} values · ${report.codeCount} fault records · ${report.turns.size} AI answers")
             OutlinedTextField(state.draftTitle, viewModel::draftTitle, label = { Text("Report title") },
                 singleLine = true, enabled = !state.saving)
@@ -58,7 +58,7 @@ fun ReportsScreen(viewModel: ReportsViewModel, onExport: () -> Unit) {
                             Text(row.title, fontWeight = FontWeight.Bold)
                             Text(row.capturedLabel, fontSize = 13.sp)
                             Text("${row.values.size} values · ${row.codeCount} fault records · ${row.turns.size} AI answers")
-                            Text(if (row.simulated) "DIAG · simulated data" else row.origin, color = MaterialTheme.colorScheme.primary)
+                            Text(if (row.simulated) "${row.origin} · simulated data" else row.origin, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -68,6 +68,8 @@ fun ReportsScreen(viewModel: ReportsViewModel, onExport: () -> Unit) {
                     Text(report.capturedLabel)
                     if (report.simulated) Text("SIMULATED DATA · not a real vehicle", color = MaterialTheme.colorScheme.primary)
                     Text(report.origin)
+                    report.vehicleModel?.let { Text("Truck: $it") }
+                    if (report.vehicleModel != null) Text("VIN: ${report.vin ?: "not configured"}")
                     report.ecuCapturedLabel?.let { Text("ECU snapshot: $it") }
                     report.profile?.let { Text(it) }
                     report.adapterName?.let { Text("Adapter: $it", fontSize = 13.sp) }

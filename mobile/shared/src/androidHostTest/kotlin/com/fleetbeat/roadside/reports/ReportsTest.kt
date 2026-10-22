@@ -219,6 +219,22 @@ class ReportsViewModelTest {
         assertEquals(1, memory.rows.size)
         assertEquals(saved, memory.rows.values.single().single())
     }
+    @Test fun demoReadSavesBeforeAiAndUpdatesSameReportWithAnswer() = fixture { vm, memory ->
+        val snapshot = com.fleetbeat.roadside.assistant.VolvoDemoFaultReader(random = kotlin.random.Random(4)).read(emptySet())
+        val context = vm.captureFaultContext(snapshot)
+        val question = snapshot.questionBlock() + "\n\nObserved symptoms: Power loss uphill"
+        val source = com.fleetbeat.roadside.assistant.AssistantState(open = true, session = 1,
+            question = question, demoBlock = snapshot.questionBlock(), ecuContext = context)
+        vm.autoAssistant(source); runCurrent()
+        val first = memory.rows.values.single().single()
+        assertEquals("Volvo D13C", first.vehicleModel); assertEquals("TESTVIN1233456566", first.vin)
+        assertTrue(first.simulated); assertEquals(context.faults, first.faults)
+        assertContains(first.additionalInput, "Power loss uphill")
+        vm.autoAssistant(source.copy(turns = listOf(ReportTurn(question, "Checks", "Guidance")))); runCurrent()
+        val updated = memory.rows.values.single().single()
+        assertEquals(first.id, updated.id); assertEquals(1, updated.turns.size)
+        assertTrue(updated.additionalInput.isEmpty()); assertEquals(first.faults, updated.faults)
+    }
     @Test fun remoteAutoSaveUpdatesOneReportWithoutManualAction() = fixture { vm, memory ->
         val linked = source().copy(linked = true)
         vm.autoRemote(linked); runCurrent()

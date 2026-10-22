@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.fleetbeat.roadside.remote.RemoteState
 import com.fleetbeat.roadside.diagnostics.DiagnosticsState
 import com.fleetbeat.roadside.assistant.AssistantState
+import com.fleetbeat.roadside.assistant.FaultCodeSnapshot
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
@@ -91,21 +92,25 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         lastRemote = key
         persistAutomatically(report)
     }
+    fun captureFaultContext(snapshot: FaultCodeSnapshot): DiagnosticReport {
+        val time = wallClock()
+        return snapshot.report(newId(), time, timestamp(time))
+    }
     fun autoAssistant(source: AssistantState) {
         if (owner == null || !source.open) return
         if (assistantSession != source.session) { assistantSession = source.session; assistantId = newId(); lastAssistant = null }
-        if (source.turns.isEmpty()) return
-        val key = listOf(source.turns, source.question, source.notes)
+        if (source.turns.isEmpty() && source.demoBlock == null) return
+        val key = listOf(source.turns, source.question, source.notes, source.ecuContext)
         if (key == lastAssistant) return
         val time = wallClock()
         val context = source.ecuContext
         val report = (context ?: DiagnosticReport(id = assistantId!!, title = "Diagnostic assistance report",
             capturedAt = time, capturedLabel = timestamp(time), simulated = false,
             origin = "AI diagnostic", values = emptyList(), faults = emptyList())).copy(
-            id = assistantId!!, title = if (context != null) "ECU analysis report" else "Diagnostic assistance report",
+            id = assistantId!!, title = if (context != null && source.turns.isEmpty()) context.title else if (context != null) "ECU analysis report" else "Diagnostic assistance report",
             capturedAt = time, capturedLabel = timestamp(time), ecuCapturedLabel = context?.capturedLabel,
             turns = source.turns.toList(), notes = source.notes,
-            additionalInput = source.question.takeIf { it != source.turns.last().question }.orEmpty())
+            additionalInput = source.question.takeIf { it != source.turns.lastOrNull()?.question }.orEmpty())
         lastAssistant = key
         persistAutomatically(report)
     }
@@ -129,7 +134,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
             origin = "AI diagnostic", values = emptyList(), faults = emptyList())
         val draft = base.copy(id = newId(), title = if (context != null) "ECU analysis report" else base.title,
             capturedAt = time, capturedLabel = timestamp(time), ecuCapturedLabel = context?.capturedLabel,
-            turns = source.turns.toList(), additionalInput = source.question.takeIf { it != source.turns.last().question }.orEmpty())
+            turns = source.turns.toList(), additionalInput = source.question.takeIf { it != source.turns.lastOrNull()?.question }.orEmpty())
         mutable.update { it.copy(draft = draft, draftTitle = draft.title, error = null, notice = null) }
     }
     fun draftNotes(value: String) { if (!mutable.value.saving) mutable.update { it.copy(draft = it.draft?.copy(notes = value.take(4000))) } }

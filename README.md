@@ -211,3 +211,14 @@ Report JSON includes top-level `companyId: "e2fc8a58-4981-40d7-bbaa-93566b200711
 
 
 After signing in, the home screen has two bottom navigation tabs with icons. **Main menu** contains Guided diagnostics and AI diagnostic. **Config** contains account details, vehicle selection, Adapter & live data, Remote diagnostics, Saved reports, Refresh profile, and Sign out. Returning from a feature preserves the selected tab.
+
+
+## Demo ECU fault reading in AI diagnostic
+
+At the beginning of **AI diagnostic**, choose **Read ECU fault codes** to populate Your question with a simulated Volvo D13C fault snapshot. The demo chooses a complete related fault scenario (underboost, low fuel pressure, intake pressure correlation, DPF restriction, or SCR/AdBlue faults), with two or three codes. Consecutive reads choose a different code set. These are simulated catalog-based examples, not actual vehicle measurements or an ECU connection. No adapter or backend request is made by the demo read.
+
+Add observed symptoms using text or voice, review the full question, then explicitly choose **Get guidance**. Re-reading replaces an unchanged generated code block while preserving observations. Edited ECU blocks must be cleared before replacement; text is never silently discarded to fit the 600-character request limit. Reading is available before the first answer in a new session and does not replace snapshots opened from local or remote diagnostics.
+
+The model is Volvo D13C. The fixed demo VIN is `TESTVIN1233456566`. Demo report JSON includes vehicleModel, nullable vin, simulated=true, the full code descriptions, and the existing companyId. The snapshot is saved automatically before the AI request and updated with questions, answers, observations and notes. FaultCodeReader is the integration boundary for future local/remote reading implementations.
+
+The AI diagnostic screen and prefilled question use the label **ECU fault codes** without a demo banner. Generated report data retains `simulated: true` for provenance.
