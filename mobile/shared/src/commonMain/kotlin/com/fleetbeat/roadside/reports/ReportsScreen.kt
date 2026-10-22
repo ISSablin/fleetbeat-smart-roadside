@@ -70,6 +70,8 @@ fun ReportsScreen(viewModel: ReportsViewModel, onExport: () -> Unit) {
                     Text(report.origin)
                     report.ecuCapturedLabel?.let { Text("ECU snapshot: $it") }
                     report.profile?.let { Text(it) }
+                    report.adapterName?.let { Text("Adapter: $it", fontSize = 13.sp) }
+                    report.busSpeedKbit?.let { Text("CAN speed: $it kbit/s", fontSize = 13.sp) }
                     report.adapterVersion?.let { Text("Adapter: $it", fontSize = 13.sp) }
                     report.adapterVoltage?.let { Text("Adapter voltage: $it V", fontSize = 13.sp) }
                     Text("${report.broadcastFrames} broadcast frames", fontSize = 13.sp)

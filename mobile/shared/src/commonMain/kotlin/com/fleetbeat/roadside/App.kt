@@ -42,6 +42,7 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
     LaunchedEffect(state.profile?.id) {
         reportsViewModel.bindUser(state.profile?.id)
         if (state.profile != null) {
+            launch { diagnosticsViewModel.state.collect { reportsViewModel.autoLocal(it) } }
             launch { remoteViewModel.state.collect { reportsViewModel.autoRemote(it) } }
             launch { assistantViewModel.state.collect { reportsViewModel.autoAssistant(it) } }
         }
@@ -67,7 +68,13 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
                     assistantViewModel.open(question, context)
                 }
             } else if (state.profile != null && diagnosticsState.open) {
-                DiagnosticsScreen(diagnosticsViewModel, onScan, onEnableBluetooth, onPermissions, onLocation)
+                DiagnosticsScreen(diagnosticsViewModel, onScan, onEnableBluetooth, onPermissions, onLocation, reportsState.error) {
+                    val context = reportsViewModel.captureLocalContext(diagnosticsState)
+                    val question = context.broadcastQuestion()
+                    reportsViewModel.autoLocal(diagnosticsState)
+                    diagnosticsViewModel.closeScreen()
+                    assistantViewModel.open(question, context)
+                }
             } else if (state.profile != null && catalogState.open) {
                 CatalogScreen(catalogViewModel, diagnosticsViewModel::open)
             } else {

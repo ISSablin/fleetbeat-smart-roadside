@@ -15,7 +15,7 @@ import kotlin.math.roundToLong
 
 @Composable
 fun DiagnosticsScreen(viewModel: DiagnosticsViewModel, onScan: () -> Unit,
-                      onEnableBluetooth: () -> Unit, onPermissions: () -> Unit, onLocation: () -> Unit) {
+                      onEnableBluetooth: () -> Unit, onPermissions: () -> Unit, onLocation: () -> Unit, reportError: String?, onExplain: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val connection by viewModel.connection.collectAsState()
     val connected = connection.status == BleConnectionStatus.Connected
@@ -97,6 +97,14 @@ fun DiagnosticsScreen(viewModel: DiagnosticsViewModel, onScan: () -> Unit,
                     }
                     Text(if (state.listening) "Listening · ${state.frames} frames received" else "Listening is stopped",
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (state.values.isNotEmpty() || state.faults.isNotEmpty()) item {
+                    Text("Reports save automatically on this device.", color = MaterialTheme.colorScheme.primary)
+                    reportError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    OutlinedButton(onClick = onExplain, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                        Text("Ask AI about these results")
+                    }
+                    Text("Opens an editable question and disconnects the adapter.", fontSize = 13.sp)
                 }
                 diagnosticReadings(state.listening, state.values, state.faults, state.now)
             }

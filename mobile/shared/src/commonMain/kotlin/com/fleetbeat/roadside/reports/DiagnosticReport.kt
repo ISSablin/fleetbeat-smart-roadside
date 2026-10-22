@@ -1,6 +1,7 @@
 package com.fleetbeat.roadside.reports
 
 import com.fleetbeat.roadside.remote.RemoteState
+import com.fleetbeat.roadside.diagnostics.DiagnosticsState
 import kotlinx.serialization.Serializable
 
 @Serializable data class ReportValue(val label: String, val value: Double?, val unit: String,
@@ -11,8 +12,10 @@ import kotlinx.serialization.Serializable
     val codes: List<ReportCode>, val sourceAddress: Int? = null)
 @Serializable data class ReportTurn(val question: String, val title: String, val body: String, val causes: List<String> = emptyList())
 @Serializable data class DiagnosticReport(
-    val schemaVersion: Int = 1, val id: String, val title: String, val capturedAt: Long,
+    val schemaVersion: Int = 1, val id: String,
+    val companyId: String = "e2fc8a58-4981-40d7-bbaa-93566b200711", val title: String, val capturedAt: Long,
     val capturedLabel: String, val simulated: Boolean, val origin: String,
+    val adapterName: String? = null, val busSpeedKbit: Int? = null,
     val profile: String? = null, val adapterVersion: String? = null, val adapterVoltage: Double? = null,
     val turns: List<ReportTurn> = emptyList(), val additionalInput: String = "", val notes: String = "",
     val ecuCapturedLabel: String? = null, val broadcastFrames: Long = 0, val values: List<ReportValue>, val faults: List<ReportFaults>,
@@ -43,6 +46,15 @@ fun remoteReport(state: RemoteState, id: String, capturedAt: Long, capturedLabel
         values = values, faults = requestedFaults + broadcasts)
 }
 
+fun localReport(state: DiagnosticsState, id: String, capturedAt: Long, capturedLabel: String, monotonicNow: Long): DiagnosticReport {
+    // Broadcast decoding and snapshot mapping are identical for local and remote transports.
+    val snapshot = remoteReport(RemoteState(values = state.values, faults = state.faults, frames = state.frames),
+        id, capturedAt, capturedLabel, monotonicNow)
+    return snapshot.copy(title = "Local Bluetooth diagnostic report", origin = "Local Bluetooth adapter",
+        adapterName = state.adapterName, busSpeedKbit = state.dataSpeed ?: state.speed,
+        adapterVersion = state.adapterVersion, adapterVoltage = state.adapterVoltage)
+}
+
 fun DiagnosticReport.asText(): String = buildString {
     appendLine("FleetBeat Smart Roadside")
     appendLine(title)
@@ -50,6 +62,8 @@ fun DiagnosticReport.asText(): String = buildString {
     appendLine("Source: $origin")
     if (simulated) appendLine("SIMULATED DATA — this report does not describe a real vehicle.")
     profile?.let { appendLine("Profile: $it") }
+    adapterName?.let { appendLine("Adapter name: $it") }
+    busSpeedKbit?.let { appendLine("CAN speed: $it kbit/s") }
     adapterVersion?.let { appendLine("Adapter: $it") }
     adapterVoltage?.let { appendLine("Adapter voltage: $it V") }
     ecuCapturedLabel?.let { appendLine("ECU snapshot captured: $it") }

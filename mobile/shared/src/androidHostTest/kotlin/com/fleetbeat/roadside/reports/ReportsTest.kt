@@ -2,6 +2,8 @@ package com.fleetbeat.roadside.reports
 
 import androidx.lifecycle.ViewModelStore
 import com.fleetbeat.roadside.diagnostics.ecu.*
+import com.fleetbeat.roadside.diagnostics.*
+import com.fleetbeat.roadside.assistant.broadcastQuestion
 import com.fleetbeat.roadside.remote.RemoteState
 import java.io.File
 import kotlinx.coroutines.*
@@ -17,7 +19,51 @@ private fun source() = RemoteState(code = "DIAG", version = "emu-mqtt-1", voltag
     ecuFaults = listOf(EcuFault("0C4900", 47, "3145", "Sensor fault")), faultsReadAt = 2000)
 private fun report(id: String = ID) = remoteReport(source(), id, 10000, "2026-10-21 00:00:00 UTC", 9000)
 
+private fun localSource() = DiagnosticsState(open = true, session = 1, adapterName = "ITD_ELD_TEST", adapterVersion = "test-fw",
+    adapterVoltage = 13.8, speed = 250, frames = 3,
+    values = listOf(LiveValue("rpm", "Engine RPM", 650.0, "rpm", 0, 1000),
+        LiveValue("rpm", "Engine RPM", null, "rpm", 3, 8000)),
+    faults = listOf(FaultReport(0, listOf(TroubleCode(1234, 5, 2, false)), 7000)))
+
 class ReportStorageTest {
+    @Test fun localSnapshotPreservesSourceMetadataAndUnavailableReadings() {
+        val snapshot = localReport(localSource(), ID, 10000, "UTC", 9000)
+        assertFalse(snapshot.simulated)
+        assertEquals("Local Bluetooth adapter", snapshot.origin)
+        assertEquals("ITD_ELD_TEST", snapshot.adapterName)
+        assertEquals(250, snapshot.busSpeedKbit)
+        assertEquals(250, localReport(localSource().copy(dataSpeed = 250, speed = 500), ID, 1, "UTC", 9000).busSpeedKbit)
+        assertEquals(listOf(0, 3), snapshot.values.map { it.sourceAddress })
+        assertEquals(8, snapshot.values.first().ageSeconds)
+        assertTrue(snapshot.values.first().staleAtCapture)
+        assertNull(snapshot.values.last().value)
+        assertEquals(2, snapshot.faults.single().codes.single().occurrences)
+        val text = snapshot.asText()
+        listOf("Local Bluetooth", "test-fw", "250 kbit/s", "source 0x03", "Unavailable", "SPN 1234", "Occurrences: 2").forEach { assertContains(text, it) }
+        val question = snapshot.broadcastQuestion()
+        listOf("Local Bluetooth", "ECU 0x00", "SPN 1234", "count 2", "650.0 rpm", "ECU 0x03", "unavailable").forEach { assertContains(question, it) }
+    }
+    @Test fun emptyStreamCannotCreateEvidenceAndEmptyDm1IsDistinct() {
+        val empty = localReport(DiagnosticsState(adapterVoltage = 13.8, frames = 50), ID, 1, "UTC", 9000)
+        assertFalse(empty.hasEvidence)
+        assertContains(empty.broadcastQuestion(), "No DM1 received")
+        val noFault = localReport(localSource().copy(values = emptyList(), faults = listOf(FaultReport(3, emptyList(), 8000))), ID, 1, "UTC", 9000)
+        assertTrue(noFault.hasEvidence)
+        assertContains(noFault.broadcastQuestion(), "ECU 0x03: no active faults")
+    }
+    @Test fun oversizedPreviewKeepsCompleteLinesAndFullSnapshot() {
+        val source = localSource().copy(faults = listOf(FaultReport(0, (1..40).map { TroubleCode(it, 5, 1, false) }, 0)))
+        val snapshot = localReport(source, ID, 1, "UTC", 9000)
+        val question = snapshot.broadcastQuestion()
+        assertTrue(question.length <= 600)
+        assertTrue(question.endsWith("Partial preview; full snapshot retained in local report."))
+        assertEquals(40, snapshot.codeCount)
+        assertContains(question, "40 fault records")
+        val legacy = localReport(source.copy(faults = listOf(FaultReport(3, listOf(TroubleCode(null, 3, null, true)), 0))), ID, 1, "UTC", 9000)
+        assertContains(legacy.broadcastQuestion(), "Legacy SPN encoding")
+        assertFalse(legacy.broadcastQuestion().contains("SPN null"))
+    }
+
     @Test fun aiOnlyReportPersistsConversationDraftAndNotes() = runBlocking {
         val turn = ReportTurn("Engine stalls", "Checks", "Check sensor wiring", listOf("Wiring"))
         val ai = report().copy(values = emptyList(), faults = emptyList(), simulated = false,
@@ -35,6 +81,11 @@ class ReportStorageTest {
         val old = json.encodeToString(DiagnosticReport.serializer(), report())
         val decoded = json.decodeFromString(DiagnosticReport.serializer(), old)
         assertTrue(decoded.turns.isEmpty())
+        assertEquals("e2fc8a58-4981-40d7-bbaa-93566b200711", decoded.companyId)
+        val storedJson = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val encoded = storedJson.encodeToString(DiagnosticReport.serializer(), decoded)
+        val fields = kotlinx.serialization.json.Json.parseToJsonElement(encoded) as kotlinx.serialization.json.JsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(decoded.companyId), fields["companyId"])
         assertEquals(report(), decoded)
     }
 
@@ -132,13 +183,41 @@ class ReportsViewModelTest {
             rows[owner]?.removeAll { it.id == id }
         }
     }
-    private fun fixture(block: suspend TestScope.(ReportsViewModel, MemoryStore) -> Unit) = runTest {
+    private fun fixture(newId: () -> String = { ID }, block: suspend TestScope.(ReportsViewModel, MemoryStore) -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val memory = MemoryStore()
-        val vm = ReportsViewModel(memory, "https://api.example", { 10000 }, { 9000 }, { "UTC" }, { ID })
+        val vm = ReportsViewModel(memory, "https://api.example", { 10000 }, { 9000 }, { "UTC" }, newId)
         val store = ViewModelStore(); store.put("reports", vm)
         try { vm.bindUser(1); block(vm, memory) }
         finally { store.clear(); Dispatchers.resetMain() }
+    }
+    @Test fun localAutoSaveUpdatesSameConnectionAndSeparatesReconnect() = fixture(newId = { java.util.UUID.randomUUID().toString() }) { vm, memory ->
+        vm.autoLocal(localSource().copy(values = emptyList(), faults = emptyList())); runCurrent()
+        assertTrue(memory.rows.isEmpty())
+        vm.autoLocal(localSource()); runCurrent()
+        val first = memory.rows.values.single().single()
+        vm.autoLocal(localSource().copy(values = emptyList(), now = 20000)); runCurrent()
+        assertEquals(1, memory.rows.values.single().size)
+        assertTrue(memory.rows.values.single().single().values.isEmpty())
+        vm.autoLocal(localSource().copy(open = false, values = emptyList(), faults = emptyList())); runCurrent()
+        assertEquals(1, memory.rows.values.single().size)
+        vm.autoLocal(localSource().copy(session = 2)); runCurrent()
+        assertEquals(2, memory.rows.values.single().size)
+        assertTrue(memory.rows.values.single().any { it.id != first.id })
+    }
+    @Test fun localAiContextSurvivesSourceResetAndAccountChange() = fixture { vm, memory ->
+        val context = vm.captureLocalContext(localSource())
+        val assistant = com.fleetbeat.roadside.assistant.AssistantState(open = true, session = 1,
+            question = context.broadcastQuestion(), ecuContext = context, turns = listOf(ReportTurn(context.broadcastQuestion(), "Checks", "Inspect wiring")))
+        vm.autoAssistant(assistant); runCurrent()
+        val saved = memory.rows.values.single().single()
+        assertEquals(context.values, saved.values)
+        assertEquals(context.faults, saved.faults)
+        assertEquals("ITD_ELD_TEST", saved.adapterName)
+        vm.bindUser(2)
+        vm.autoLocal(localSource().copy(open = false)); runCurrent()
+        assertEquals(1, memory.rows.size)
+        assertEquals(saved, memory.rows.values.single().single())
     }
     @Test fun remoteAutoSaveUpdatesOneReportWithoutManualAction() = fixture { vm, memory ->
         val linked = source().copy(linked = true)

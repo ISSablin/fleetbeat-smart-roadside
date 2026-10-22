@@ -3,6 +3,7 @@ package com.fleetbeat.roadside.reports
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fleetbeat.roadside.remote.RemoteState
+import com.fleetbeat.roadside.diagnostics.DiagnosticsState
 import com.fleetbeat.roadside.assistant.AssistantState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -17,6 +18,9 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
     private val timestamp: (Long) -> String, private val newId: () -> String) : ViewModel() {
     private val mutable = MutableStateFlow(ReportsState())
     val state = mutable.asStateFlow()
+    private var localSession: Int? = null
+    private var localId: String? = null
+    private var lastLocal: Any? = null
     private var remoteId: String? = null
     private var wasLinked = false
     private var assistantSession: Int? = null
@@ -36,6 +40,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         val next = id?.let { "${namespace.trimEnd('/')}:$it" }
         if (owner != next) {
             generation++; operation?.cancel(); exportJob?.cancel(); pendingExport = null
+            localSession = null; localId = null; lastLocal = null
             remoteId = null; wasLinked = false; assistantSession = null; assistantId = null; lastRemote = null; lastAssistant = null
             owner = next; mutable.value = ReportsState()
         }
@@ -54,11 +59,25 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
             } catch (error: CancellationException) { throw error }
               catch (_: Exception) {
                 if (generation == epoch) {
-                    lastRemote = null; lastAssistant = null
+                    lastRemote = null; lastAssistant = null; lastLocal = null
                     mutable.update { it.copy(error = "Automatic report save failed. Check available storage; delete older reports if storage is full.") }
                 }
             } finally { automaticWrites.unlock() }
         }
+    }
+    fun captureLocalContext(source: DiagnosticsState): DiagnosticReport {
+        val time = wallClock()
+        return localReport(source, newId(), time, timestamp(time), monotonicClock())
+    }
+    fun autoLocal(source: DiagnosticsState) {
+        if (owner == null || !source.open || source.session == 0) return
+        if (localSession != source.session) { localSession = source.session; localId = newId(); lastLocal = null }
+        val key = listOf(source.values, source.faults, source.adapterName, source.adapterVersion, source.adapterVoltage, source.dataSpeed ?: source.speed)
+        if (lastLocal == key) return
+        val report = captureLocalContext(source).copy(id = localId!!)
+        if (!report.hasEvidence) return
+        lastLocal = key
+        persistAutomatically(report)
     }
     fun autoRemote(source: RemoteState) {
         if (owner == null) return
