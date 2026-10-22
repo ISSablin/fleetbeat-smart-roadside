@@ -21,7 +21,7 @@ fun AssistantScreen(viewModel: AssistantViewModel, onVoiceInput: () -> Unit, rep
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).widthIn(max = 640.dp).fillMaxWidth()
             .align(Alignment.CenterHorizontally).padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Diagnostic assistant", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Text("AI diagnostic", fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Text("Explain symptoms or fault codes and ask for diagnostic checks.")
             OutlinedTextField(state.question, viewModel::question, Modifier.fillMaxWidth(), enabled = !state.busy && !state.voiceActive,
                 label = { Text("Your question") }, minLines = 4, maxLines = 12,

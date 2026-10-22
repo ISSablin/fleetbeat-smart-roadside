@@ -98,7 +98,7 @@ cd mobile
 
 ## Bluetooth adapter and truck broadcasts
 
-Open **Adapter & live data** from the account screen or selected control-unit summary. Power the ITD/ELD BLE adapter, disconnect other apps from it, and choose **Scan adapters**. Select the discovered adapter to connect.
+Open **Adapter & live data** from the **Config** tab or selected control-unit summary. Power the ITD/ELD BLE adapter, disconnect other apps from it, and choose **Scan adapters**. Select the discovered adapter to connect.
 
 Android 12 and later require Bluetooth scan/connect permissions. Android 11 and earlier require Location permission and enabled Location services for BLE scanning. The app requests these permissions when you scan. Location coordinates are not collected.
 
@@ -113,7 +113,7 @@ A Bluetooth connection does not prove the truck is broadcasting. If the frame co
 
 ## Remote diagnostics
 
-Open **Remote diagnostics** from the account screen. Enter the session code supplied by the vehicle-side app, then **Join session**. **Use DIAG simulator** fills the shared diagnostic simulator code; its readings are simulated and its listening settings are shared with other clients.
+Open **Remote diagnostics** from the **Config** tab. Enter the session code supplied by the vehicle-side app, then **Join session**. **Use DIAG simulator** fills the shared diagnostic simulator code; its readings are simulated and its listening settings are shared with other clients.
 
 The technician app first joins through the authenticated account API, then connects to MQTT with the current account login and access token. It subscribes to `adapter/{code}/up` and sends adapter commands to `adapter/{code}/down`. A matching adapter status response is required before the screen shows a connection. **Check adapter** sends another status request. The last response age and received/sent byte counts help distinguish a reachable broker from a responding adapter.
 
@@ -139,9 +139,9 @@ The DIAG simulator's fault layout is explicitly `59 02` followed by four-byte re
 After a successful read, the app stops the remote stream. Disconnect, Back, sign-out and broker loss cancel pending ECU reads. A read failure reports an error rather than an empty fault report. Clearing faults, actuator commands, security access and regeneration are not included. Physical ECU requested reads over Bluetooth have not been enabled.
 
 
-## Diagnostic assistant
+## AI diagnostic
 
-Open **Diagnostic assistant** from the account screen. Type a question or choose **Voice input** to speak. Android's installed speech recognition service returns text, which is appended to the question for editing. It may require internet access and its own microphone permission. The app receives text and does not save audio recordings. Cancelled or failed voice input preserves existing text. Questions remain limited to 600 characters; review the result and tap **Get guidance** to send it. The question is sent to the configured account API and its AI provider. No measurements, account details or adapter commands are automatically attached. The signed-in account token authorizes the request; AI gateway credentials and the provider API key stay on the server.
+Open **AI diagnostic** from the **Main menu** tab. Type a question or choose **Voice input** to speak. Android's installed speech recognition service returns text, which is appended to the question for editing. It may require internet access and its own microphone permission. The app receives text and does not save audio recordings. Cancelled or failed voice input preserves existing text. Questions remain limited to 600 characters; review the result and tap **Get guidance** to send it. The question is sent to the configured account API and its AI provider. No measurements, account details or adapter commands are automatically attached. The signed-in account token authorizes the request; AI gateway credentials and the provider API key stay on the server.
 
 After a requested ECU read, **Ask AI about these results** prepares an editable question containing the simulator/profile context, snapshot ages, requested values and up to five fault records. Opening this preview disconnects the remote session. Review and edit the exact text before sending it; preparing a question does not call the AI service.
 
@@ -175,7 +175,7 @@ The API binds to host loopback port 8000. Put an HTTPS reverse proxy in front of
 
 Remote diagnostic reports save automatically as readings and fault responses arrive. Each connection updates one report. AI sessions also save automatically, including additional typed or voice input and report notes. No manual save action is needed.
 
-Open **Saved reports** from the account screen to review the history. Reports include capture time in UTC, source, adapter details, values, raw fault codes/status bytes and available catalog descriptions. Each reading and fault response retains its age and stale state at capture. DIAG reports are prominently labelled as simulated. An ECU response containing zero matching faults is kept distinct from receiving no fault response.
+Open **Saved reports** from the **Config** tab to review the history. Reports include capture time in UTC, source, adapter details, values, raw fault codes/status bytes and available catalog descriptions. Each reading and fault response retains its age and stale state at capture. DIAG reports are prominently labelled as simulated. An ECU response containing zero matching faults is kept distinct from receiving no fault response.
 
 Reports are stored in private app files on this device, separately for each account and account-API address. Signing out hides reports but retains them for that account's next sign-in. Reports are not uploaded or synced. Up to 100 reports can be saved per account on the device; delete older reports to free capacity. Uninstalling the app removes these private reports. The app reports unreadable/unsupported files without presenting them as valid data.
 
@@ -183,7 +183,7 @@ From a report, choose **Export text** and pick a destination in Android's file p
 
 Report saving covers local Bluetooth diagnostics, remote diagnostics, and AI assistance. Cloud history is not included.
 
-AI sessions save automatically from Diagnostic assistant, including ECU snapshots when opened from results, all completed questions and answers, unsent input, and optional user notes. Each AI request sends the current question only; previous answers remain in the local session and report. Reports remain private to the signed-in account on this device and can be exported as text.
+AI sessions save automatically from AI diagnostic, including ECU snapshots when opened from results, all completed questions and answers, unsent input, and optional user notes. Each AI request sends the current question only; previous answers remain in the local session and report. Reports remain private to the signed-in account on this device and can be exported as text.
 
 Reports save automatically on this device: one report per remote connection and one per AI session, updated with new results, completed AI exchanges, unsent additional input, and report notes. No Save report action is required. Existing reports remain readable. Local storage holds up to 100 reports per account; save failures are shown rather than deleting older reports.
 
@@ -192,7 +192,7 @@ Future FleetBeat upload configuration lives in `.env.example`: `ROADSIDE_REPORT_
 
 ## Guided diagnostics
 
-Open **Guided diagnostics** from the account screen. Choose a symptom, select the observation that matches it, then choose **Review question**. Diagnostic assistant opens with an editable question containing your selected symptom, follow-up question, and observation. Add any details by typing or voice, then explicitly choose **Get guidance**. Selecting a symptom or reviewing a question does not call the AI service or send adapter commands.
+Open **Guided diagnostics** from the **Main menu** tab. Choose a symptom, select the observation that matches it, then choose **Review question**. AI diagnostic opens with an editable question containing your selected symptom, follow-up question, and observation. Add any details by typing or voice, then explicitly choose **Get guidance**. Selecting a symptom or reviewing a question does not call the AI service or send adapter commands.
 
 **Describe another problem** opens a blank assistant question. Back from a follow-up returns to the symptom list; Back from the list returns to your account. Loading failures offer retry, and sign-out clears the selection and cached list. The assistant response, submitted symptom question, additional input, and notes use the same automatic local report storage as other AI sessions.
 
@@ -203,8 +203,11 @@ The app loads the authenticated English symptom list from `GET /api/v1/help-wiza
 
 While listening to a local ITD/ELD adapter, received J1939 measurements and DM1 fault reports save automatically in one report per Bluetooth connection. Repeated readings update that report. A reconnect starts a separate report. Adapter name, firmware, voltage, CAN speed used to receive the data, ECU source addresses, reading ages, and fault occurrence counts are retained. Bluetooth addresses are not stored in reports. Connecting without receiving decoded measurements or DM1 does not create a vehicle report, and missing data is never represented as zero.
 
-After data arrives, choose **Ask AI about these results**. The app captures the complete local snapshot, disconnects the adapter, and opens an editable question in Diagnostic assistant. The question includes fault records and measurements with their ECU source addresses and ages. If the 600-character preview cannot fit all records, it is labelled as a partial preview; the complete snapshot remains attached to the automatically saved AI report. Only the reviewed question is sent when you choose **Get guidance**. The AI cannot send adapter commands. Local report history and text export remain available after disconnect and restart.
+After data arrives, choose **Ask AI about these results**. The app captures the complete local snapshot, disconnects the adapter, and opens an editable question in AI diagnostic. The question includes fault records and measurements with their ECU source addresses and ages. If the 600-character preview cannot fit all records, it is labelled as a partial preview; the complete snapshot remains attached to the automatically saved AI report. Only the reviewed question is sent when you choose **Get guidance**. The AI cannot send adapter commands. Local report history and text export remain available after disconnect and restart.
 
 This feature uses the existing Bluetooth broadcast decoder. It does not enable requested ECU reads on physical adapters. Physical frame reception depends on the adapter and connected vehicle; an empty CAN stream produces no invented readings or test data.
 
 Report JSON includes top-level `companyId: "e2fc8a58-4981-40d7-bbaa-93566b200711"` alongside the unique report `id` for FleetBeat routing. Older local reports without this field use this company ID when decoded.
+
+
+After signing in, the home screen has two bottom navigation tabs with icons. **Main menu** contains Guided diagnostics and AI diagnostic. **Config** contains account details, vehicle selection, Adapter & live data, Remote diagnostics, Saved reports, Refresh profile, and Sign out. Returning from a feature preserves the selected tab.

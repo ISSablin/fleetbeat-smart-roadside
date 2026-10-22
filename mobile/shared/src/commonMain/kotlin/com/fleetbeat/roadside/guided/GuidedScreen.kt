@@ -38,7 +38,7 @@ fun GuidedScreen(viewModel: GuidedViewModel, onReview: (String) -> Unit) {
             } else {
                 val selected = state.selected!!
                 item { Text(selected.title, fontSize = 22.sp, fontWeight = FontWeight.Bold) }
-                if (selected.entry == "freeform") item { Text("Describe the symptoms in Diagnostic assistant using text or voice.") }
+                if (selected.entry == "freeform") item { Text("Describe the symptoms in AI diagnostic using text or voice.") }
                 else {
                     item { Text(selected.followup!!.question, fontSize = 18.sp) }
                     items(selected.followup!!.choices, key = { it.id }) { choice ->

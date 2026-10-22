@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -47,6 +48,7 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
             launch { assistantViewModel.state.collect { reportsViewModel.autoAssistant(it) } }
         }
     }
+    var homeTab by rememberSaveable(state.profile?.id) { mutableStateOf(0) }
     var passwordVisible by remember { mutableStateOf(false) }
     MaterialTheme(colorScheme = darkColorScheme(
         primary = Color(0xFFF7AA32), onPrimary = Color(0xFF151B25),
@@ -77,6 +79,13 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
                 }
             } else if (state.profile != null && catalogState.open) {
                 CatalogScreen(catalogViewModel, diagnosticsViewModel::open)
+            } else if (state.profile != null) {
+                HomeScreen(login = state.profile!!.login, selectedTab = homeTab, onTab = { homeTab = it },
+                    loading = state.loading, error = state.error,
+                    onGuided = guidedViewModel::open, onAi = { assistantViewModel.open() },
+                    onVehicle = catalogViewModel::open, onAdapter = diagnosticsViewModel::open,
+                    onRemote = { diagnosticsViewModel.closeScreen(); remoteViewModel.open() },
+                    onReports = reportsViewModel::open, onRefresh = viewModel::refresh, onLogout = viewModel::logout)
             } else {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
                 .imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -97,37 +106,13 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
                             trailingIcon = { TextButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Text(if (passwordVisible) "Hide" else "Show")
                             } })
-                    } else {
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Signed in", color = MaterialTheme.colorScheme.primary)
-                                Text(state.profile!!.login, fontSize = 20.sp)
-                                Text("Account active")
-                            }
-                        }
                     }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     if (state.profile == null) {
                         Button(onClick = viewModel::login, enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Sign in") }
-                    } else {
-                        Button(onClick = catalogViewModel::open, enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Select vehicle") }
-                        OutlinedButton(onClick = diagnosticsViewModel::open, enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Adapter & live data") }
-                        OutlinedButton(onClick = { diagnosticsViewModel.closeScreen(); remoteViewModel.open() }, enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Remote diagnostics") }
-                        OutlinedButton(onClick = guidedViewModel::open, enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Guided diagnostics") }
-                        OutlinedButton(onClick = { assistantViewModel.open() }, enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Diagnostic assistant") }
-                        OutlinedButton(onClick = reportsViewModel::open, enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Saved reports") }
-                        OutlinedButton(onClick = viewModel::refresh, enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Refresh profile") }
-                        OutlinedButton(onClick = viewModel::logout, enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Sign out") }
+
                     }
                 }
             }

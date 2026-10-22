@@ -101,7 +101,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         val context = source.ecuContext
         val report = (context ?: DiagnosticReport(id = assistantId!!, title = "Diagnostic assistance report",
             capturedAt = time, capturedLabel = timestamp(time), simulated = false,
-            origin = "Diagnostic assistant", values = emptyList(), faults = emptyList())).copy(
+            origin = "AI diagnostic", values = emptyList(), faults = emptyList())).copy(
             id = assistantId!!, title = if (context != null) "ECU analysis report" else "Diagnostic assistance report",
             capturedAt = time, capturedLabel = timestamp(time), ecuCapturedLabel = context?.capturedLabel,
             turns = source.turns.toList(), notes = source.notes,
@@ -126,7 +126,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         val context = source.ecuContext
         val base = context ?: DiagnosticReport(id = newId(), title = "Diagnostic assistance report",
             capturedAt = time, capturedLabel = timestamp(time), simulated = false,
-            origin = "Diagnostic assistant", values = emptyList(), faults = emptyList())
+            origin = "AI diagnostic", values = emptyList(), faults = emptyList())
         val draft = base.copy(id = newId(), title = if (context != null) "ECU analysis report" else base.title,
             capturedAt = time, capturedLabel = timestamp(time), ecuCapturedLabel = context?.capturedLabel,
             turns = source.turns.toList(), additionalInput = source.question.takeIf { it != source.turns.last().question }.orEmpty())
