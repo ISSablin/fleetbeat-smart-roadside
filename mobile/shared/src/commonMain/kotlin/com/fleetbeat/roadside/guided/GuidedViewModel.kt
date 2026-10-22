@@ -60,7 +60,7 @@ class GuidedViewModel(private val service: GuidedService, private val expired: (
         if (situation.entry == "freeform") return ""
         val choice = state.choice ?: return null
         val text = "Help diagnose these symptoms with read-only checks.\nProblem: ${situation.title}\n${situation.followup?.question}\nObservation: ${choice.label}"
-        if (text.length > 600) { mutable.update { it.copy(error = "This selection is too long. Use Diagnostic assistant to describe it instead.") }; return null }
+        if (text.length > 600) { mutable.update { it.copy(error = "This selection is too long. Use AI diagnostic to describe it instead.") }; return null }
         return text
     }
     fun back() {
