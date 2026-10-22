@@ -15,6 +15,7 @@ import kotlinx.serialization.Serializable
     val schemaVersion: Int = 1, val id: String,
     val companyId: String = "e2fc8a58-4981-40d7-bbaa-93566b200711", val title: String, val capturedAt: Long,
     val capturedLabel: String, val simulated: Boolean, val origin: String,
+    val vehicleModel: String? = null, val vin: String? = null,
     val adapterName: String? = null, val busSpeedKbit: Int? = null,
     val profile: String? = null, val adapterVersion: String? = null, val adapterVoltage: Double? = null,
     val turns: List<ReportTurn> = emptyList(), val additionalInput: String = "", val notes: String = "",
@@ -61,6 +62,8 @@ fun DiagnosticReport.asText(): String = buildString {
     appendLine("Captured: $capturedLabel")
     appendLine("Source: $origin")
     if (simulated) appendLine("SIMULATED DATA — this report does not describe a real vehicle.")
+    vehicleModel?.let { appendLine("Truck: $it") }
+    if (vehicleModel != null) appendLine("VIN: ${vin ?: "not configured"}")
     profile?.let { appendLine("Profile: $it") }
     adapterName?.let { appendLine("Adapter name: $it") }
     busSpeedKbit?.let { appendLine("CAN speed: $it kbit/s") }

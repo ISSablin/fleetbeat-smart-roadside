@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun AssistantScreen(viewModel: AssistantViewModel, onVoiceInput: () -> Unit, reportNotice: String?) {
+fun AssistantScreen(viewModel: AssistantViewModel, onVoiceInput: () -> Unit, onReadFaultCodes: () -> Unit, reportNotice: String?) {
     val state by viewModel.state.collectAsState()
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(horizontal = 20.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -22,6 +22,10 @@ fun AssistantScreen(viewModel: AssistantViewModel, onVoiceInput: () -> Unit, rep
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).widthIn(max = 640.dp).fillMaxWidth()
             .align(Alignment.CenterHorizontally).padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("AI diagnostic", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            if (state.turns.isEmpty() && (state.ecuContext == null || state.demoBlock != null)) {
+                Button(onClick = onReadFaultCodes, enabled = !state.busy && !state.voiceActive,
+                    modifier = Modifier.fillMaxWidth()) { Text(if (state.readingFaults) "Reading fault codes…" else "Read ECU fault codes") }
+            }
             Text("Explain symptoms or fault codes and ask for diagnostic checks.")
             OutlinedTextField(state.question, viewModel::question, Modifier.fillMaxWidth(), enabled = !state.busy && !state.voiceActive,
                 label = { Text("Your question") }, minLines = 4, maxLines = 12,

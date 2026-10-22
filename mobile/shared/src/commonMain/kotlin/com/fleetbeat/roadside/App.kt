@@ -61,7 +61,7 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
             } else if (state.profile != null && guidedState.open) {
                 GuidedScreen(guidedViewModel) { question -> guidedViewModel.closeScreen(); assistantViewModel.open(question) }
             } else if (state.profile != null && assistantState.open) {
-                AssistantScreen(assistantViewModel, onVoiceInput, reportsState.error ?: reportsState.notice)
+                AssistantScreen(assistantViewModel, onVoiceInput, { assistantViewModel.readFaultCodes(reportsViewModel::captureFaultContext) }, reportsState.error ?: reportsState.notice)
             } else if (state.profile != null && remoteState.open) {
                 RemoteScreen(remoteViewModel, reportsState.error ?: reportsState.notice) {
                     val question = remoteState.diagnosticQuestion()

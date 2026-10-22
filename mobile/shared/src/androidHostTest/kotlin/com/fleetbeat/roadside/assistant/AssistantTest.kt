@@ -21,10 +21,10 @@ class AssistantTest {
         var action: suspend () -> Advice = { Advice("Guidance", "Read-only checks", false) }
         override suspend fun ask(question: String): Advice { questions += question; return action() }
     }
-    private fun fixture(block: suspend TestScope.(AssistantViewModel, Service, MutableList<String>) -> Unit) = runTest {
+    private fun fixture(reader: FaultCodeReader = VolvoDemoFaultReader(), block: suspend TestScope.(AssistantViewModel, Service, MutableList<String>) -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val service = Service(); val expired = mutableListOf<String>()
-        val vm = AssistantViewModel(service, expired::add)
+        val vm = AssistantViewModel(service, expired::add, reader)
         val store = ViewModelStore(); store.put("assistant", vm)
         try { vm.bindUser(1); vm.open(); block(vm, service, expired) }
         finally { store.clear(); Dispatchers.resetMain() }
