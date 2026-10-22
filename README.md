@@ -181,7 +181,7 @@ Reports are stored in private app files on this device, separately for each acco
 
 From a report, choose **Export text** and pick a destination in Android's file picker. The UTF-8 text file includes the source, simulator label, capture-relative ages, values and fault details. Account credentials and remote session codes are not included. Exported copies are separate files in the chosen location and are not removed by **Delete report**, which requires confirmation and removes only the private saved copy. Export does not send a message to another person or call the AI service.
 
-Report saving covers remote diagnostics and AI assistance. Local Bluetooth report capture and cloud history are not included.
+Report saving covers local Bluetooth diagnostics, remote diagnostics, and AI assistance. Cloud history is not included.
 
 AI sessions save automatically from Diagnostic assistant, including ECU snapshots when opened from results, all completed questions and answers, unsent input, and optional user notes. Each AI request sends the current question only; previous answers remain in the local session and report. Reports remain private to the signed-in account on this device and can be exported as text.
 
@@ -197,3 +197,14 @@ Open **Guided diagnostics** from the account screen. Choose a symptom, select th
 **Describe another problem** opens a blank assistant question. Back from a follow-up returns to the symptom list; Back from the list returns to your account. Loading failures offer retry, and sign-out clears the selection and cached list. The assistant response, submitted symptom question, additional input, and notes use the same automatic local report storage as other AI sessions.
 
 The app loads the authenticated English symptom list from `GET /api/v1/help-wizard/tree?locale=eng` on the configured account API. It uses symptom titles and observation labels only; server-provided repair advice and dispatch fields are ignored. The supported categories cover starting, tires, warning lights, brakes, noises, overheating, transmission, leaks, climate, smoke, and odors. Regeneration, lockout, and dispatch workflows are excluded. The backend includes the same product symptom questions as static data in `backend/app/symptoms.json`; serving the list does not invoke an AI provider.
+
+
+## Local Bluetooth reports and AI guidance
+
+While listening to a local ITD/ELD adapter, received J1939 measurements and DM1 fault reports save automatically in one report per Bluetooth connection. Repeated readings update that report. A reconnect starts a separate report. Adapter name, firmware, voltage, CAN speed used to receive the data, ECU source addresses, reading ages, and fault occurrence counts are retained. Bluetooth addresses are not stored in reports. Connecting without receiving decoded measurements or DM1 does not create a vehicle report, and missing data is never represented as zero.
+
+After data arrives, choose **Ask AI about these results**. The app captures the complete local snapshot, disconnects the adapter, and opens an editable question in Diagnostic assistant. The question includes fault records and measurements with their ECU source addresses and ages. If the 600-character preview cannot fit all records, it is labelled as a partial preview; the complete snapshot remains attached to the automatically saved AI report. Only the reviewed question is sent when you choose **Get guidance**. The AI cannot send adapter commands. Local report history and text export remain available after disconnect and restart.
+
+This feature uses the existing Bluetooth broadcast decoder. It does not enable requested ECU reads on physical adapters. Physical frame reception depends on the adapter and connected vehicle; an empty CAN stream produces no invented readings or test data.
+
+Report JSON includes top-level `companyId: "e2fc8a58-4981-40d7-bbaa-93566b200711"` alongside the unique report `id` for FleetBeat routing. Older local reports without this field use this company ID when decoded.

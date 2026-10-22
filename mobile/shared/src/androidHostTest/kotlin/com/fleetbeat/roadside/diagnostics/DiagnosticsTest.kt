@@ -2,6 +2,7 @@ package com.fleetbeat.roadside.diagnostics
 
 import androidx.lifecycle.ViewModelStore
 import com.fleetbeat.roadside.diagnostics.ble.*
+import com.fleetbeat.roadside.reports.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.*
@@ -146,6 +147,45 @@ class AdapterSessionTest {
             assertNull(vm.connection.value.connectedDevice)
         } finally { store.clear(); Dispatchers.resetMain() }
         assertTrue(ble.closed)
+    }
+
+    @Test fun receivedFramesAreSavedBeforeDisconnectAndNewConnectionGetsNewSession() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val ble = FakeBle()
+        val vm = DiagnosticsViewModel(ble) { testScheduler.currentTime }
+        val rows = mutableMapOf<String, DiagnosticReport>()
+        val persistence = object : ReportStore {
+            override suspend fun load(owner: String) = StoredReports(rows.values.toList())
+            override suspend fun save(owner: String, report: DiagnosticReport) { rows[report.id] = report }
+            override suspend fun upsert(owner: String, report: DiagnosticReport) { rows[report.id] = report }
+            override suspend fun delete(owner: String, id: String) { rows.remove(id) }
+        }
+        val reports = ReportsViewModel(persistence, "test-api", { 10000 }, { testScheduler.currentTime }, { "UTC" }, { java.util.UUID.randomUUID().toString() })
+        val store = ViewModelStore().apply { put("live", vm); put("reports", reports) }
+        val collector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect { reports.autoLocal(it) } }
+        fun frame(id: UInt, payload: ByteArray) = ByteArray(14).also { bytes ->
+            bytes[0] = 1; bytes[1] = (128 or payload.size).toByte()
+            repeat(4) { bytes[it + 2] = (id shr (it * 8)).toByte() }; payload.copyInto(bytes, 6)
+        }
+        try {
+            reports.bindUser(1); vm.bindUser(1); vm.open(); vm.connect("test"); runCurrent()
+            advanceTimeBy(600); runCurrent(); val firstSession = vm.state.value.session
+            assertTrue(firstSession > 0); assertEquals("ITD_ELD_TEST", vm.state.value.adapterName)
+            vm.startListening(); runCurrent()
+            ble.input.emit(frame(0x18F00400u, byteArrayOf(0, 0, 0, 0x50, 0x14)))
+            ble.input.emit(frame(0x18FECA03u, byteArrayOf(4, -1, 0x21, 0x43, 0xB2.toByte(), 5, -1, -1)))
+            runCurrent(); advanceTimeBy(600); runCurrent()
+            assertEquals(650.0, rows.values.single().values.single().value)
+            assertEquals(3, rows.values.single().faults.single().sourceAddress)
+            val captured = rows.values.single()
+            vm.closeScreen(); advanceTimeBy(300); runCurrent()
+            assertTrue(vm.state.value.values.isEmpty()); assertEquals(captured, rows.values.single())
+            vm.open(); vm.connect("test"); runCurrent(); advanceTimeBy(600); runCurrent()
+            assertTrue(vm.state.value.session > firstSession)
+            assertTrue(vm.state.value.values.isEmpty()); assertTrue(vm.state.value.faults.isEmpty())
+            vm.bindUser(2); runCurrent()
+            assertEquals(0, vm.state.value.session); assertFalse(vm.state.value.open)
+        } finally { collector.cancel(); store.clear(); Dispatchers.resetMain() }
     }
 
     @Test fun missingAckCannotClaimListening() = runTest {

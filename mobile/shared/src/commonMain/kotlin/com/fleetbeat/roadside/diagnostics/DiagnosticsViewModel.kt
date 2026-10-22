@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 
 data class DiagnosticsState(
+    val session: Int = 0, val dataSpeed: Int? = null, val adapterName: String? = null,
     val open: Boolean = false, val speed: Int = 500, val listening: Boolean = false,
     val busy: Boolean = false, val message: String? = null, val adapterVersion: String? = null,
     val adapterVoltage: Double? = null, val values: List<LiveValue> = emptyList(),
@@ -26,6 +27,7 @@ class DiagnosticsViewModel(private val ble: BleRepository, private val clock: ()
     private var ack: CompletableDeferred<Unit>? = null
     private var ackId: String? = null
     private var sequence = 0
+    private var connectionSequence = 0
     private var ownerId: Int? = null
 
     init {
@@ -43,6 +45,9 @@ class DiagnosticsViewModel(private val ble: BleRepository, private val clock: ()
             var previous = BleConnectionStatus.Disconnected
             connection.collect { current ->
                 if (current.status == BleConnectionStatus.Connected && previous != current.status && mutable.value.open) {
+                    data.reset(); wire.reset()
+                    mutable.update { it.copy(session = ++connectionSequence, dataSpeed = null, adapterName = current.connectedDevice?.name,
+                        values = emptyList(), faults = emptyList(), frames = 0) }
                     bootstrap?.cancel()
                     bootstrap = viewModelScope.launch {
                         delay(300)
@@ -79,6 +84,7 @@ class DiagnosticsViewModel(private val ble: BleRepository, private val clock: ()
     fun bindUser(userId: Int?) {
         if (ownerId != userId) {
             if (mutable.value.open || connection.value.connectedDevice != null) closeScreen()
+            mutable.value = DiagnosticsState()
             ownerId = userId
         }
     }
@@ -120,7 +126,7 @@ class DiagnosticsViewModel(private val ble: BleRepository, private val clock: ()
                 ackId = "listen${++sequence}"
                 ble.sendBytes(AdapterCommands.listen(ackId!!, mutable.value.speed, true))
                 withTimeout(6_000) { ack!!.await() }
-                mutable.update { it.copy(listening = true, values = emptyList(), faults = emptyList(), frames = 0) }
+                mutable.update { it.copy(listening = true, dataSpeed = it.speed, values = emptyList(), faults = emptyList(), frames = 0) }
             }
             ack = null; ackId = null
             mutable.update { it.copy(busy = false) }
