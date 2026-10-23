@@ -31,7 +31,7 @@ fun CatalogScreen(viewModel: CatalogViewModel, onConnectAdapter: () -> Unit) {
         Column(Modifier.widthIn(max = 640.dp).fillMaxWidth().align(Alignment.CenterHorizontally)) {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = viewModel::back) { Text("Back") }
-                Text("FleetBeat Smart Roadside", Modifier.weight(1f).padding(start = 8.dp),
+                Text("FleetBeat Smart Roadside Assistant", Modifier.weight(1f).padding(start = 8.dp),
                     fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
             Text(state.title, fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold,

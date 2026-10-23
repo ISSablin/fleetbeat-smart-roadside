@@ -14,7 +14,7 @@ from app.models import User
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="FleetBeat Smart Roadside account administration")
+    parser = argparse.ArgumentParser(description="FleetBeat Smart Roadside Assistant account administration")
     commands = parser.add_subparsers(dest="command", required=True)
     create = commands.add_parser("create-user")
     create.add_argument("email")
