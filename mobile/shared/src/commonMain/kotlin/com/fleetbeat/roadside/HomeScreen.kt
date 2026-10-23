@@ -22,7 +22,7 @@ fun HomeScreen(login: String, selectedTab: Int, onTab: (Int) -> Unit, loading: B
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing),
         horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.weight(1f).widthIn(max = 460.dp).fillMaxWidth().padding(horizontal = 24.dp)) {
-            Text("FleetBeat Smart Roadside", Modifier.padding(top = 24.dp, bottom = 20.dp),
+            Text("FleetBeat Smart Roadside Assistant", Modifier.padding(top = 24.dp, bottom = 20.dp),
                 fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 24.dp),

@@ -19,7 +19,7 @@ def test_health_initializes_database_and_uses_product_title(tmp_path: Path):
         assert response.status_code == 200
         assert response.json() == {
             "status": "ok",
-            "service": "FleetBeat Smart Roadside",
+            "service": "FleetBeat Smart Roadside Assistant",
             "database": "ok",
         }
         assert client.get("/openapi.json").json()["info"]["title"] == settings.app_name

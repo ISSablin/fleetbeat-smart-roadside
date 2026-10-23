@@ -87,7 +87,7 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
                 .imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 Column(Modifier.widthIn(max = 460.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    Text("FleetBeat Smart Roadside", fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold)
+                    Text("FleetBeat Smart Roadside Assistant", fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold)
                     Text(if (state.profile == null) "Sign in to your technician account" else "Your account",
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider(color = MaterialTheme.colorScheme.primary, thickness = 2.dp)
