@@ -1,4 +1,4 @@
-# FleetBeat Smart Roadside
+# FleetBeat Smart Roadside Assistant
 
 ## Backend
 
@@ -16,7 +16,7 @@ Open http://127.0.0.1:8000/docs for API documentation.
 `GET /health` checks database connectivity and returns:
 
 ```json
-{"status":"ok","service":"FleetBeat Smart Roadside","database":"ok"}
+{"status":"ok","service":"FleetBeat Smart Roadside Assistant","database":"ok"}
 ```
 
 Database failures return HTTP 503. The service creates its SQLite database on startup at `backend/data/roadside.db`; importing the application does not create database files. Set `ROADSIDE_DATA_DIR` to override the storage directory. Relative overrides are resolved from the process working directory. Existing records survive restarts. Startup creates missing tables; it does not upgrade existing table schemas.

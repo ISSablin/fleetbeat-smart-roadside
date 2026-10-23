@@ -58,7 +58,7 @@ fun localReport(state: DiagnosticsState, id: String, capturedAt: Long, capturedL
 }
 
 fun DiagnosticReport.asText(): String = buildString {
-    appendLine("FleetBeat Smart Roadside")
+    appendLine("FleetBeat Smart Roadside Assistant")
     appendLine(title)
     appendLine("Captured: $capturedLabel")
     appendLine("Source: $origin")

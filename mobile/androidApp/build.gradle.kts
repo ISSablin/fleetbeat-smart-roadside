@@ -20,8 +20,8 @@ android {
         buildConfigField("String", "MQTT_HOST", "\"${mqttHost.get().replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         buildConfigField("int", "MQTT_PORT", mqttPort.get().toInt().also { require(it in 1..65535) }.toString())
         buildConfigField("String", "TRUCK_SERVICE_API_BASE_URL", "\"${truckServiceApiUrl.get()}\"")
-        versionCode = 2
-        versionName = "0.0.1"
+        versionCode = 3
+        versionName = "0.0.2"
         buildConfigField("String", "API_BASE_URL", "\"${apiUrl.get().replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         buildConfigField("String", "CAR_API_BASE_URL", "\"${carApiUrl.get().replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
