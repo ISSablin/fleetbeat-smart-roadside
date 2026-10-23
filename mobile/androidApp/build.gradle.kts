@@ -6,6 +6,7 @@ plugins {
 }
 kotlin { compilerOptions { jvmTarget = JvmTarget.JVM_11 } }
 val apiUrl = providers.gradleProperty("apiBaseUrl").orElse("https://api3.truck-inspect.com")
+val truckServiceApiUrl = providers.gradleProperty("truckServiceApiBaseUrl").orElse("https://mapdb3.truck-inspect.com")
 val carApiUrl = providers.gradleProperty("carApiBaseUrl").orElse("https://cardb3.truck-inspect.com")
 val mqttHost = providers.gradleProperty("mqttHost").orElse("cardb3.truck-inspect.com")
 val mqttPort = providers.gradleProperty("mqttPort").orElse("8822")
@@ -18,6 +19,7 @@ android {
         targetSdk = 36
         buildConfigField("String", "MQTT_HOST", "\"${mqttHost.get().replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         buildConfigField("int", "MQTT_PORT", mqttPort.get().toInt().also { require(it in 1..65535) }.toString())
+        buildConfigField("String", "TRUCK_SERVICE_API_BASE_URL", "\"${truckServiceApiUrl.get()}\"")
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "API_BASE_URL", "\"${apiUrl.get().replace("\\", "\\\\").replace("\"", "\\\"")}\"")

@@ -62,9 +62,9 @@ class AssistantTest {
         assertFalse(vm.state.value.busy)
     }
     @Test fun timeoutIsVisibleAndCanRetry() = fixture { vm, service, _ ->
-        service.action = { delay(90_000); Advice("Late", "Late", false) }
+        service.action = { delay(120_000); Advice("Late", "Late", false) }
         vm.question("Fault question"); vm.send(); runCurrent()
-        advanceTimeBy(80_001); runCurrent()
+        advanceTimeBy(110_001); runCurrent()
         assertContains(vm.state.value.error!!, "timed out")
         service.action = { Advice("Retry", "Works", false) }
         vm.send(); runCurrent(); assertEquals("Works", vm.state.value.advice?.body)

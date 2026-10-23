@@ -24,6 +24,14 @@ class AdviceRequest(BaseModel):
     entry: Literal["freeform"]
     locale: Literal["eng"] = "eng"
     user_text: str = Field(min_length=1, max_length=600)
+    qa: list[str] = Field(default_factory=list, max_length=1)
+
+    @field_validator("qa")
+    @classmethod
+    def bounded_context(cls, value: list[str]) -> list[str]:
+        if any(len(item) > 3000 for item in value):
+            raise ValueError("Diagnostic context is too long")
+        return value
 
     @field_validator("user_text")
     @classmethod
@@ -51,7 +59,7 @@ async def advice(body: AdviceRequest, request: Request,
         response = await request.app.state.ai_http.post(
             settings.ai_gateway_url.rstrip("/") + "/v1/complete",
             headers={"Authorization": "Bearer " + settings.ai_client_token},
-            json={"prompt": body.user_text, "system": SYSTEM, "max_tokens": 1024},
+            json={"prompt": body.user_text + ("\nResponse format and location context:\n" + "\n".join(body.qa) if body.qa else ""), "system": SYSTEM, "max_tokens": 1024},
         )
     except httpx.TimeoutException as error:
         raise HTTPException(status_code=504, detail="AI request timed out") from error

@@ -1,5 +1,7 @@
 package com.fleetbeat.roadside.reports
 
+import com.fleetbeat.roadside.assistant.AssessmentSummary
+import com.fleetbeat.roadside.assistant.NearbyServices
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -57,6 +59,7 @@ fun ReportsScreen(viewModel: ReportsViewModel, onExport: () -> Unit) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(row.title, fontWeight = FontWeight.Bold)
                             Text(row.capturedLabel, fontSize = 13.sp)
+                            Text(state.uploads[row.id]?.label ?: "Upload pending · saved on this device", fontSize = 13.sp)
                             Text("${row.values.size} values · ${row.codeCount} fault records · ${row.turns.size} AI answers")
                             Text(if (row.simulated) "${row.origin} · simulated data" else row.origin, color = MaterialTheme.colorScheme.primary)
                         }
@@ -68,8 +71,11 @@ fun ReportsScreen(viewModel: ReportsViewModel, onExport: () -> Unit) {
                     Text(report.capturedLabel)
                     if (report.simulated) Text("SIMULATED DATA · not a real vehicle", color = MaterialTheme.colorScheme.primary)
                     Text(report.origin)
-                    report.vehicleModel?.let { Text("Truck: $it") }
-                    if (report.vehicleModel != null) Text("VIN: ${report.vin ?: "not configured"}")
+                    Text(state.uploads[report.id]?.label ?: "Upload pending · saved on this device", color = MaterialTheme.colorScheme.primary)
+                    state.uploads[report.id]?.remoteReportId?.let { Text("FleetBeat report ID: $it", fontSize = 12.sp) }
+                    OutlinedTextField(report.vehicleModel.orEmpty(), { viewModel.vehicle(model = it) }, label = { Text("Vehicle model") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(report.vin.orEmpty(), { viewModel.vehicle(vin = it) }, label = { Text("VIN") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    TextButton(onClick = viewModel::retryUploads) { Text("Retry upload") }
                     report.ecuCapturedLabel?.let { Text("ECU snapshot: $it") }
                     report.profile?.let { Text(it) }
                     report.adapterName?.let { Text("Adapter: $it", fontSize = 13.sp) }
@@ -90,7 +96,9 @@ fun ReportsScreen(viewModel: ReportsViewModel, onExport: () -> Unit) {
                             Text(turn.question)
                             Text(turn.title, fontWeight = FontWeight.Bold)
                             Text("AI-generated guidance", color = MaterialTheme.colorScheme.primary)
+                            turn.assessment?.let { AssessmentSummary(it) }
                             Text(turn.body)
+                            turn.assessment?.let { NearbyServices(it) }
                             turn.causes.forEach { Text("• $it") }
                         }
                     }
@@ -134,7 +142,7 @@ fun ReportsScreen(viewModel: ReportsViewModel, onExport: () -> Unit) {
     }
     if (deleteId != null && state.selected?.id == deleteId) AlertDialog(
         onDismissRequest = { deleteId = null }, title = { Text("Delete this report?") },
-        text = { Text("This removes the saved report from this device. Exported files remain separate.") },
+        text = { Text("This removes the report from this device. Uploaded copies on FleetBeat and exported files remain.") },
         confirmButton = { TextButton(onClick = { deleteId = null; viewModel.deleteSelected() }) { Text("Delete") } },
         dismissButton = { TextButton(onClick = { deleteId = null }) { Text("Cancel") } })
 }

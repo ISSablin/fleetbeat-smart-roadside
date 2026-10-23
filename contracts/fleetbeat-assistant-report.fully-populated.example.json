@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "companyId": "e2fc8a58-4981-40d7-bbaa-93566b200711",
+  "title": "Volvo D13C — power loss under load",
+  "capturedAt": 1792709849429,
+  "capturedLabel": "2026-10-22 22:57:29 UTC",
+  "simulated": true,
+  "origin": "Illustrative populated ECU and AI report",
+  "vehicleModel": "Volvo D13C",
+  "vin": "TESTVIN1233456566",
+  "profile": "Volvo D13C",
+  "adapterVersion": "Illustrative firmware 2.0",
+  "adapterVoltage": 13.8,
+  "turns": [
+    {
+      "question": "Volvo D13C, VIN TESTVIN1233456566. P0299 and P0101. Power drops when climbing hills; no unusual noise. What should I check?",
+      "title": "Power loss: inspect intake and boost connections",
+      "body": "These illustrative codes and observations point to an intake/airflow or boost issue. Inspect accessible intake hoses, clamps and wiring with the engine stopped. Arrange professional diagnosis to compare measured airflow and boost against manufacturer specifications.\n\nLocation: 3420 Hillview Ave, Palo Alto, CA 94304 (37.396944, -122.144424); emulated GPS: True\nNearby service categories: truck_repair, engine_repair_service\nIllustrative recommendation using a catalog example; current availability has not been checked.",
+      "causes": [
+        "Charge-air hose leak or loose connection",
+        "Restricted air intake",
+        "Airflow sensor or wiring issue"
+      ],
+      "incidentSeverity": "HIGH",
+      "recommendedAction": "SEEK_SERVICE",
+      "recommendedStations": [
+        {
+          "id": "illustrative-catalog-service-1",
+          "name": "Peninsula Truck Repair Inc.",
+          "category": "truck_repair",
+          "lat": 37.48054123,
+          "lng": -122.2020035,
+          "address": "3018 Spring St",
+          "city": "Redwood City",
+          "state": "CA",
+          "phone": "6503659795",
+          "website": "https://example.com/truck-service",
+          "distance_km": 10.59
+        }
+      ]
+    }
+  ],
+  "additionalInput": "Driver later reports that the power loss is most noticeable with a loaded trailer. No smoke observed.",
+  "notes": "Fully populated UI-binding example, not an uploaded real diagnostic record. ECU readings, firmware, status bytes, occurrence counts and frame count are illustrative. Vehicle identity and GPS use the configured demo context. Service selection and website are illustrative; verify contact details before use.\nAdapter name: ITD_ELD\nCAN speed (kbit/s): 500",
+  "ecuCapturedLabel": "2026-10-22 22:57:25 UTC",
+  "broadcastFrames": 1240,
+  "values": [
+    {
+      "label": "Engine RPM",
+      "value": 1520.0,
+      "unit": "rpm",
+      "ageSeconds": 2,
+      "staleAtCapture": false,
+      "origin": "J1939 broadcast",
+      "sourceAddress": 0
+    },
+    {
+      "label": "Vehicle speed",
+      "value": 43.0,
+      "unit": "km/h",
+      "ageSeconds": 2,
+      "staleAtCapture": false,
+      "origin": "J1939 broadcast",
+      "sourceAddress": 0
+    },
+    {
+      "label": "Coolant temperature",
+      "value": 88.0,
+      "unit": "°C",
+      "ageSeconds": 3,
+      "staleAtCapture": false,
+      "origin": "J1939 broadcast",
+      "sourceAddress": 0
+    },
+    {
+      "label": "Vehicle voltage",
+      "value": 13.8,
+      "unit": "V",
+      "ageSeconds": 4,
+      "staleAtCapture": false,
+      "origin": "J1939 broadcast",
+      "sourceAddress": 0
+    }
+  ],
+  "faults": [
+    {
+      "origin": "Requested ECU fault records",
+      "ageSeconds": 4,
+      "staleAtCapture": false,
+      "codes": [
+        {
+          "code": "P0299",
+          "status": 47,
+          "label": "Turbo underboost",
+          "description": "Illustrative fault: measured boost is below the expected range under load.",
+          "occurrences": 3
+        },
+        {
+          "code": "P0101",
+          "status": 43,
+          "label": "Mass air flow range/performance",
+          "description": "Illustrative fault: airflow reading is outside the expected operating range.",
+          "occurrences": 2
+        }
+      ],
+      "sourceAddress": 0
+    }
+  ],
+  "incidentSeverity": "HIGH",
+  "recommendedAction": "SEEK_SERVICE"
+}

@@ -1,5 +1,6 @@
 package com.fleetbeat.roadside.reports
 
+import com.fleetbeat.roadside.assistant.RoadsideAssessment
 import com.fleetbeat.roadside.remote.RemoteState
 import com.fleetbeat.roadside.diagnostics.DiagnosticsState
 import kotlinx.serialization.Serializable
@@ -10,7 +11,7 @@ import kotlinx.serialization.Serializable
     val label: String = "", val description: String = "", val occurrences: Int? = null)
 @Serializable data class ReportFaults(val origin: String, val ageSeconds: Long, val staleAtCapture: Boolean,
     val codes: List<ReportCode>, val sourceAddress: Int? = null)
-@Serializable data class ReportTurn(val question: String, val title: String, val body: String, val causes: List<String> = emptyList())
+@Serializable data class ReportTurn(val question: String, val title: String, val body: String, val causes: List<String> = emptyList(), val assessment: RoadsideAssessment? = null)
 @Serializable data class DiagnosticReport(
     val schemaVersion: Int = 1, val id: String,
     val companyId: String = "e2fc8a58-4981-40d7-bbaa-93566b200711", val title: String, val capturedAt: Long,
@@ -99,6 +100,13 @@ fun DiagnosticReport.asText(): String = buildString {
         turns.forEachIndexed { index, turn ->
             appendLine(); appendLine("Question ${index + 1}: ${turn.question}")
             appendLine(turn.title); appendLine(turn.body)
+            turn.assessment?.let { assessment ->
+                appendLine("Severity: ${assessment.severity.label}")
+                appendLine("Recommended action: ${assessment.action.label}")
+                appendLine("Location: ${assessment.location.label} (${assessment.location.lat}, ${assessment.location.lng}); emulated GPS: ${assessment.location.emulated}")
+                assessment.services.forEach { appendLine("Nearby: ${it.name} · ${it.distance_km} km · ${it.category} · ${it.phone.orEmpty()} · ${it.address.orEmpty()}") }
+                assessment.serviceNotice?.let { appendLine(it) }
+            }
             turn.causes.forEach { appendLine("Possible cause: $it") }
         }
     }

@@ -104,10 +104,10 @@ class AssistantViewModel(private val service: AdviceService, private val expired
         mutable.update { it.copy(question = text, busy = true, advice = null, error = null, notice = null) }
         operation = viewModelScope.launch {
             try {
-                val result = withTimeout(80_000) { service.ask(text) }
+                val result = withTimeout(110_000) { service.ask(text) }
                 if (generation == epoch) {
                     if (result.stub || result.body.isBlank()) throw AdviceFailure("The AI service did not return generated guidance.")
-                    mutable.update { it.copy(advice = result, turns = it.turns + ReportTurn(text, result.title, result.body, result.causes)) }
+                    mutable.update { it.copy(advice = result, turns = it.turns + ReportTurn(text, result.title, result.body, result.causes, result.assessment)) }
                 }
             } catch (error: TimeoutCancellationException) {
                 if (generation == epoch) mutable.update { it.copy(error = "The AI request timed out. You can try again.") }

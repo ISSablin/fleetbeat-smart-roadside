@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "companyId": "e2fc8a58-4981-40d7-bbaa-93566b200711",
+  "title": "Volvo D13C diagnostic report",
+  "capturedAt": 1792670400000,
+  "capturedLabel": "2026-10-22 12:00 UTC",
+  "simulated": true,
+  "origin": "Generated Volvo D13C snapshot",
+  "vehicleModel": "Volvo D13C",
+  "vin": "TESTVIN1233456566",
+  "adapterName": null,
+  "busSpeedKbit": null,
+  "profile": null,
+  "adapterVersion": null,
+  "adapterVoltage": null,
+  "turns": [
+    {
+      "question": "Power drops under load. What should I check?",
+      "title": "Check the intake and boost system",
+      "body": "Inspect intake hoses, clamps, and charge-air connections with the engine stopped. Have a technician compare boost and airflow readings against manufacturer specifications.",
+      "causes": [],
+      "assessment": null
+    }
+  ],
+  "additionalInput": "Power loss on hills; no unusual noise.",
+  "notes": "Driver observation recorded after guidance.",
+  "ecuCapturedLabel": null,
+  "broadcastFrames": 0,
+  "values": [],
+  "faults": [
+    {
+      "origin": "Generated ECU fault records",
+      "ageSeconds": 0,
+      "staleAtCapture": false,
+      "codes": [
+        {
+          "code": "P0299",
+          "status": null,
+          "label": "Turbo underboost",
+          "description": "",
+          "occurrences": null
+        },
+        {
+          "code": "P0101",
+          "status": null,
+          "label": "Mass air flow range/performance",
+          "description": "",
+          "occurrences": null
+        }
+      ],
+      "sourceAddress": null
+    }
+  ],
+  "clientReportId": "c17f54cd-0d59-42b5-bec1-83ee58bc7096",
+  "reportRevision": "3cf02ee07380a9a4edca34add565f055256badc4b247a608428050c0abd278a6"
+}
