@@ -1,0 +1,589 @@
+{
+  "$defs": {
+    "DiagnosticLocation": {
+      "additionalProperties": false,
+      "properties": {
+        "lat": {
+          "title": "Lat",
+          "type": "number"
+        },
+        "lng": {
+          "title": "Lng",
+          "type": "number"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "emulated": {
+          "default": true,
+          "title": "Emulated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "lat",
+        "lng",
+        "label"
+      ],
+      "title": "DiagnosticLocation",
+      "type": "object"
+    },
+    "NearbyService": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "lat": {
+          "title": "Lat",
+          "type": "number"
+        },
+        "lng": {
+          "title": "Lng",
+          "type": "number"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State"
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phone"
+        },
+        "website": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Website"
+        },
+        "distance_km": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distance Km"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "category",
+        "lat",
+        "lng"
+      ],
+      "title": "NearbyService",
+      "type": "object"
+    },
+    "ReportCode": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "occurrences": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Occurrences"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "title": "ReportCode",
+      "type": "object"
+    },
+    "ReportFaults": {
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "title": "Origin",
+          "type": "string"
+        },
+        "ageSeconds": {
+          "minimum": 0,
+          "title": "Ageseconds",
+          "type": "integer"
+        },
+        "staleAtCapture": {
+          "title": "Staleatcapture",
+          "type": "boolean"
+        },
+        "codes": {
+          "items": {
+            "$ref": "#/$defs/ReportCode"
+          },
+          "title": "Codes",
+          "type": "array"
+        },
+        "sourceAddress": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceaddress"
+        }
+      },
+      "required": [
+        "origin",
+        "ageSeconds",
+        "staleAtCapture",
+        "codes"
+      ],
+      "title": "ReportFaults",
+      "type": "object"
+    },
+    "ReportTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "title": "Question",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "causes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Causes",
+          "type": "array"
+        },
+        "assessment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoadsideAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "question",
+        "title",
+        "body"
+      ],
+      "title": "ReportTurn",
+      "type": "object"
+    },
+    "ReportValue": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "ageSeconds": {
+          "minimum": 0,
+          "title": "Ageseconds",
+          "type": "integer"
+        },
+        "staleAtCapture": {
+          "title": "Staleatcapture",
+          "type": "boolean"
+        },
+        "origin": {
+          "title": "Origin",
+          "type": "string"
+        },
+        "sourceAddress": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceaddress"
+        }
+      },
+      "required": [
+        "label",
+        "value",
+        "unit",
+        "ageSeconds",
+        "staleAtCapture",
+        "origin"
+      ],
+      "title": "ReportValue",
+      "type": "object"
+    },
+    "RoadsideAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "severity": {
+          "enum": [
+            "LOW",
+            "MODERATE",
+            "HIGH",
+            "CRITICAL"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "STOP_IMMEDIATELY",
+            "PROCEED_WITH_CAUTION",
+            "REPORT_ON_ARRIVAL",
+            "SEEK_SERVICE"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "categories": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "location": {
+          "$ref": "#/$defs/DiagnosticLocation"
+        },
+        "services": {
+          "items": {
+            "$ref": "#/$defs/NearbyService"
+          },
+          "title": "Services",
+          "type": "array"
+        },
+        "serviceNotice": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Servicenotice"
+        }
+      },
+      "required": [
+        "severity",
+        "action",
+        "categories",
+        "location"
+      ],
+      "title": "RoadsideAssessment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Proposal for the endpoint author; not the deployed request contract.",
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "default": 1,
+      "title": "Schemaversion",
+      "type": "integer"
+    },
+    "companyId": {
+      "title": "Companyid",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "capturedAt": {
+      "description": "Unix epoch milliseconds; latest local save",
+      "minimum": 0,
+      "title": "Capturedat",
+      "type": "integer"
+    },
+    "capturedLabel": {
+      "title": "Capturedlabel",
+      "type": "string"
+    },
+    "simulated": {
+      "title": "Simulated",
+      "type": "boolean"
+    },
+    "origin": {
+      "title": "Origin",
+      "type": "string"
+    },
+    "vehicleModel": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vehiclemodel"
+    },
+    "vin": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vin"
+    },
+    "adapterName": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adaptername"
+    },
+    "busSpeedKbit": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Busspeedkbit"
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Profile"
+    },
+    "adapterVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adapterversion"
+    },
+    "adapterVoltage": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adaptervoltage"
+    },
+    "turns": {
+      "items": {
+        "$ref": "#/$defs/ReportTurn"
+      },
+      "title": "Turns",
+      "type": "array"
+    },
+    "additionalInput": {
+      "default": "",
+      "title": "Additionalinput",
+      "type": "string"
+    },
+    "notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+    },
+    "ecuCapturedLabel": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ecucapturedlabel"
+    },
+    "broadcastFrames": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Broadcastframes",
+      "type": "integer"
+    },
+    "values": {
+      "items": {
+        "$ref": "#/$defs/ReportValue"
+      },
+      "title": "Values",
+      "type": "array"
+    },
+    "faults": {
+      "items": {
+        "$ref": "#/$defs/ReportFaults"
+      },
+      "title": "Faults",
+      "type": "array"
+    },
+    "clientReportId": {
+      "minLength": 1,
+      "title": "Clientreportid",
+      "type": "string"
+    },
+    "reportRevision": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Reportrevision",
+      "type": "string"
+    }
+  },
+  "required": [
+    "companyId",
+    "title",
+    "capturedAt",
+    "capturedLabel",
+    "simulated",
+    "origin",
+    "values",
+    "faults",
+    "clientReportId",
+    "reportRevision"
+  ],
+  "title": "ProposedCreateReport",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
