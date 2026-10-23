@@ -16,9 +16,9 @@ import kotlinx.serialization.json.Json
 
 class AuthFailure(message: String, val invalidSession: Boolean = false) : Exception(message)
 
-fun configureClient(config: io.ktor.client.HttpClientConfig<*>) {
+fun configureClient(config: io.ktor.client.HttpClientConfig<*>, encodeDefaults: Boolean = false) {
     config.expectSuccess = false
-    config.install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+    config.install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true; this.encodeDefaults = encodeDefaults }) }
     config.install(HttpTimeout) {
         connectTimeoutMillis = 15_000
         requestTimeoutMillis = 20_000

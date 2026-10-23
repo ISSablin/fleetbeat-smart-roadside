@@ -11,12 +11,14 @@ import kotlinx.coroutines.flow.*
 
 data class ReportsState(val open: Boolean = false, val loading: Boolean = false, val saving: Boolean = false,
     val exporting: Boolean = false, val reports: List<DiagnosticReport> = emptyList(), val selected: DiagnosticReport? = null,
+    val uploads: Map<String, ReportUploadState> = emptyMap(),
     val draft: DiagnosticReport? = null, val draftTitle: String = "", val error: String? = null, val notice: String? = null)
 data class ReportExport(val token: Int, val filename: String)
 
 class ReportsViewModel(private val store: ReportStore, private val namespace: String,
     private val wallClock: () -> Long, private val monotonicClock: () -> Long,
-    private val timestamp: (Long) -> String, private val newId: () -> String) : ViewModel() {
+    private val timestamp: (Long) -> String, private val newId: () -> String,
+    private val sync: ReportSync? = null, private val closeClient: () -> Unit = {}) : ViewModel() {
     private val mutable = MutableStateFlow(ReportsState())
     val state = mutable.asStateFlow()
     private var localSession: Int? = null
@@ -44,6 +46,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
             localSession = null; localId = null; lastLocal = null
             remoteId = null; wasLinked = false; assistantSession = null; assistantId = null; lastRemote = null; lastAssistant = null
             owner = next; mutable.value = ReportsState()
+            sync?.bind(viewModelScope, next) { uploads -> if (owner == next) mutable.update { it.copy(uploads = uploads) } }
         }
     }
     private fun persistAutomatically(report: DiagnosticReport) {
@@ -53,6 +56,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
             automaticWrites.lock()
             try {
                 store.upsert(account, report)
+                sync?.schedule()
                 if (owner == account) mutable.update { current -> current.copy(
                     error = null,
                     reports = if (current.open) (current.reports.filterNot { it.id == report.id } + report).sortedByDescending { it.capturedAt } else current.reports,
@@ -106,7 +110,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         val context = source.ecuContext
         val report = (context ?: DiagnosticReport(id = assistantId!!, title = "Diagnostic assistance report",
             capturedAt = time, capturedLabel = timestamp(time), simulated = false,
-            origin = "AI diagnostic", values = emptyList(), faults = emptyList())).copy(
+            vehicleModel = "Volvo D13C", vin = "TESTVIN1233456566", origin = "AI diagnostic", values = emptyList(), faults = emptyList())).copy(
             id = assistantId!!, title = if (context != null && source.turns.isEmpty()) context.title else if (context != null) "ECU analysis report" else "Diagnostic assistance report",
             capturedAt = time, capturedLabel = timestamp(time), ecuCapturedLabel = context?.capturedLabel,
             turns = source.turns.toList(), notes = source.notes,
@@ -131,7 +135,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         val context = source.ecuContext
         val base = context ?: DiagnosticReport(id = newId(), title = "Diagnostic assistance report",
             capturedAt = time, capturedLabel = timestamp(time), simulated = false,
-            origin = "AI diagnostic", values = emptyList(), faults = emptyList())
+            vehicleModel = "Volvo D13C", vin = "TESTVIN1233456566", origin = "AI diagnostic", values = emptyList(), faults = emptyList())
         val draft = base.copy(id = newId(), title = if (context != null) "ECU analysis report" else base.title,
             capturedAt = time, capturedLabel = timestamp(time), ecuCapturedLabel = context?.capturedLabel,
             turns = source.turns.toList(), additionalInput = source.question.takeIf { it != source.turns.lastOrNull()?.question }.orEmpty())
@@ -151,6 +155,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         operation = viewModelScope.launch {
             try {
                 store.save(account, draft.copy(title = title))
+                sync?.schedule()
                 if (generation == epoch) mutable.update { it.copy(draft = null, notice = "Report saved on this device.") }
             } catch (error: CancellationException) { throw error }
               catch (error: Exception) { if (generation == epoch) mutable.update { it.copy(error = if (error is IllegalStateException || error is IllegalArgumentException)
@@ -159,7 +164,17 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         }
     }
     fun open() { if (owner != null) { mutable.update { it.copy(open = true, selected = null, notice = null) }; reload() } }
+    fun retryUploads() { sync?.schedule() }
+    fun vehicle(model: String? = null, vin: String? = null) {
+        val selected = mutable.value.selected ?: return
+        val time = wallClock()
+        val report = selected.copy(vehicleModel = model?.take(120) ?: selected.vehicleModel,
+            vin = vin?.take(64) ?: selected.vin, capturedAt = time, capturedLabel = timestamp(time))
+        mutable.update { it.copy(selected = report) }
+        persistAutomatically(report)
+    }
     fun reload() {
+        sync?.schedule()
         val account = owner ?: return
         operation?.cancel()
         val epoch = generation
@@ -190,6 +205,7 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
         operation = viewModelScope.launch {
             try {
                 store.delete(account, report.id)
+                sync?.schedule()
                 if (generation == epoch) {
                     mutable.update { it.copy(selected = null, reports = it.reports.filterNot { row -> row.id == report.id }, notice = "Report deleted.") }
                 }
@@ -227,4 +243,6 @@ class ReportsViewModel(private val store: ReportStore, private val namespace: St
             finally { if (generation == pending.epoch) mutable.update { it.copy(exporting = false) } }
         }
     }
+    override fun onCleared() { sync?.close(); closeClient(); super.onCleared() }
+
 }

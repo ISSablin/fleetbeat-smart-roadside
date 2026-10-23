@@ -126,3 +126,18 @@ def test_symptom_tree_is_authenticated_static_and_diagnostic_only(advice):
             assert all(set(choice) == {"id", "label"} for choice in item["followup"]["choices"])
     assert gateway.calls == []
     assert client.get("/api/v1/help-wizard/tree?locale=rus", headers=headers).status_code == 422
+
+
+def test_mobile_report_relay_requires_login_and_enforces_company(advice):
+    import json
+    from pathlib import Path
+    _, client, headers, gateway = advice
+    value=json.loads((Path(__file__).parents[2]/"contracts/assistant-report.proposed.example.json").read_text())
+    value["id"]=value.pop("clientReportId");value.pop("reportRevision")
+    path="/api/v1/assistant-reports/sync"
+    assert client.post(path,json=value).status_code == 401
+    reply=client.post(path,headers=headers,json=value)
+    assert reply.status_code == 200 and reply.json()["status"] == "pending"
+    value["companyId"]="00000000-0000-0000-0000-000000000000"
+    assert client.post(path,headers=headers,json=value).status_code == 403
+    assert gateway.calls == []

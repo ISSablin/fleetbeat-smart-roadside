@@ -51,8 +51,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(0xFF101824.toInt()),
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(0xFFF6F9FB.toInt(), 0xFFF6F9FB.toInt()),
         )
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -95,7 +95,8 @@ class MainActivity : ComponentActivity() {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val client = HttpClient(OkHttp) { configureClient(this) }
-                return AssistantViewModel(AdviceApi(client, BuildConfig.API_BASE_URL, viewModel::accessToken),
+                return AssistantViewModel(RoadsideAdviceService(AdviceApi(client, BuildConfig.API_BASE_URL, viewModel::accessToken),
+                    TruckServiceApi(client, BuildConfig.TRUCK_SERVICE_API_BASE_URL, viewModel::accessToken)),
                     viewModel::sessionExpired) { client.close() } as T
             }
         }
@@ -111,11 +112,18 @@ class MainActivity : ComponentActivity() {
         val guidedViewModel = ViewModelProvider(this, guidedFactory)[GuidedViewModel::class.java]
         val reportsFactory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = ReportsViewModel(
-                AndroidReportStore(File(filesDir, "diagnostic-reports")), BuildConfig.API_BASE_URL,
-                System::currentTimeMillis, SystemClock::elapsedRealtime,
-                { at -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(at)) },
-                { UUID.randomUUID().toString() }) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val store = AndroidReportStore(File(filesDir, "diagnostic-reports"))
+                val client = HttpClient(OkHttp) {
+                    configureClient(this, encodeDefaults = true)
+                }
+                val sync = ReportSync(store, AndroidReportUploadStateStore(File(filesDir, "report-sync")),
+                    ReportUploadApi(client, BuildConfig.API_BASE_URL, viewModel::accessToken), ::reportFingerprint)
+                return ReportsViewModel(store, BuildConfig.API_BASE_URL,
+                    System::currentTimeMillis, SystemClock::elapsedRealtime,
+                    { at -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(at)) },
+                    { UUID.randomUUID().toString() }, sync) { client.close() } as T
+            }
         }
         val reportsViewModel = ViewModelProvider(this, reportsFactory)[ReportsViewModel::class.java]
         setContent {

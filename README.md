@@ -145,7 +145,7 @@ Open **AI diagnostic** from the **Main menu** tab. Type a question or choose **V
 
 After a requested ECU read, **Ask AI about these results** prepares an editable question containing the simulator/profile context, snapshot ages, requested values and up to five fault records. Opening this preview disconnects the remote session. Review and edit the exact text before sending it; preparing a question does not call the AI service.
 
-The assistant offers explanations and diagnostic checks. It has no connection to the adapter command path and cannot execute AI-suggested procedures. Responses are labelled as AI-generated. Failed requests, server fallbacks and missing AI configuration are shown as errors rather than generated guidance. There are no automatic retries. **Stop waiting** cancels the mobile wait; it cannot cancel work already running on the server. Back and sign-out clear the mobile question and response. Completed questions and answers are retained in the local automatically saved report.
+The assistant offers explanations and diagnostic checks. It has no connection to the adapter command path and cannot execute AI-suggested procedures. Responses are labelled as AI-generated. Failed requests, server fallbacks and missing AI configuration are shown as errors rather than generated guidance. Unstructured legacy responses receive one format retry. **Stop waiting** cancels the mobile wait; it cannot cancel work already running on the server. Back and sign-out clear the mobile question and response. Completed questions and answers are retained in the local automatically saved report.
 
 Mobile uses authenticated `POST /api/v1/help-wizard/advice` on `apiBaseUrl`. Its independent request timeout is 75 seconds. The backend implements the freeform English advice subset of that route, requiring active-account authentication and limiting the question to 600 characters and upstream output to 1024 tokens. It requests text completion only, with no executable tools. No regeneration, clearing, actuator or security-access workflow is provided.
 
@@ -177,7 +177,7 @@ Remote diagnostic reports save automatically as readings and fault responses arr
 
 Open **Saved reports** from the **Config** tab to review the history. Reports include capture time in UTC, source, adapter details, values, raw fault codes/status bytes and available catalog descriptions. Each reading and fault response retains its age and stale state at capture. DIAG reports are prominently labelled as simulated. An ECU response containing zero matching faults is kept distinct from receiving no fault response.
 
-Reports are stored in private app files on this device, separately for each account and account-API address. Signing out hides reports but retains them for that account's next sign-in. Reports are not uploaded or synced. Up to 100 reports can be saved per account on the device; delete older reports to free capacity. Uninstalling the app removes these private reports. The app reports unreadable/unsupported files without presenting them as valid data.
+Reports are stored in private app files on this device, separately for each account and account-API address. Signing out hides reports but retains them for that account's next sign-in. Reports queue for automatic upload through the signed-in backend. Upload receipts are stored separately from report JSON, and upload failures do not prevent local saves. Up to 100 reports can be saved per account on the device; delete older reports to free capacity. Uninstalling the app removes these private reports. The app reports unreadable/unsupported files without presenting them as valid data.
 
 From a report, choose **Export text** and pick a destination in Android's file picker. The UTF-8 text file includes the source, simulator label, capture-relative ages, values and fault details. Account credentials and remote session codes are not included. Exported copies are separate files in the chosen location and are not removed by **Delete report**, which requires confirmation and removes only the private saved copy. Export does not send a message to another person or call the AI service.
 
@@ -187,7 +187,7 @@ AI sessions save automatically from AI diagnostic, including ECU snapshots when 
 
 Reports save automatically on this device: one report per remote connection and one per AI session, updated with new results, completed AI exchanges, unsent additional input, and report notes. No Save report action is required. Existing reports remain readable. Local storage holds up to 100 reports per account; save failures are shown rather than deleting older reports.
 
-Future FleetBeat upload configuration lives in `.env.example`: `ROADSIDE_REPORT_UPLOAD_ENABLED`, `ROADSIDE_REPORT_UPLOAD_URL`, `ROADSIDE_REPORT_UPLOAD_METHOD` (POST/PUT), and `ROADSIDE_REPORT_UPLOAD_API_KEY`. The backend transport in `backend/app/report_upload.py` sends JSON over HTTPS with X-API-Key and an idempotency key for each report revision. Upload remains disabled and unwired: mobile ingestion, a persistent retry outbox, account authorization, and the FleetBeat endpoint contract will be implemented when upload is enabled. API keys stay on the backend; none are packaged in the APK.
+FleetBeat upload configuration lives in `.env.example`: `ROADSIDE_REPORT_UPLOAD_ENABLED`, `ROADSIDE_REPORT_UPLOAD_URL`, `ROADSIDE_REPORT_UPLOAD_METHOD` (create uses POST), and `ROADSIDE_REPORT_UPLOAD_API_KEY`. The mobile app sends its complete saved report to authenticated `POST /api/v1/assistant-reports/sync` on the account backend. That relay holds the `Authorization: Api-Key <key>` credential, maps local IDs to FleetBeat IDs in `report-uploads.sqlite`, and sends POST once followed by PATCH updates. The key is never packaged in the APK. See [the report contract](contracts/assistant-reports.md).
 
 
 ## Guided diagnostics
@@ -222,3 +222,22 @@ Add observed symptoms using text or voice, review the full question, then explic
 The model is Volvo D13C. The fixed demo VIN is `TESTVIN1233456566`. Demo report JSON includes vehicleModel, nullable vin, simulated=true, the full code descriptions, and the existing companyId. The snapshot is saved automatically before the AI request and updated with questions, answers, observations and notes. FaultCodeReader is the integration boundary for future local/remote reading implementations.
 
 The AI diagnostic screen and prefilled question use the label **ECU fault codes** without a demo banner. Generated report data retains `simulated: true` for provenance.
+
+
+### AI assessment and nearby services
+
+AI diagnostic now requests one severity (Low, Moderate, High, Critical), one driver action (Stop immediately when safe, Proceed with caution, Report on arrival, Seek service), and up to three relevant service categories. The existing deployed advice endpoint receives the reviewed question plus bounded format/location context in `qa`. Businesses come from the Truck Bd catalog using the signed-in user's JWT, never from generated business names. Up to five matching services within 50 km are shown, nearest first by straight-line distance. Catalog failures preserve the diagnostic answer and show an availability message. An unstructured legacy response gets one format retry; a still malformed assessment asks the user to retry instead of inventing a classification.
+
+The replaceable `DiagnosticLocationProvider` currently returns 3420 Hillview Ave, Palo Alto, CA 94304 (37.396944, -122.144424), recorded as emulated in report metadata; no device GPS permission or polling is used. `truckServiceApiBaseUrl` defaults to `https://mapdb3.truck-inspect.com`. Severity/action, location and service results are retained in each report turn; older local reports remain readable. For FleetBeat upload, severity and action have dedicated fields. The prepared station-array extension exports recommendations as `turns[].recommendedStations`, removing their duplicated text from the body; deployment awaits API support. Local JSON retains the structured assessment.
+
+The service Map button searches Google Maps using the selected business name and postal address. Coordinates are used only to locate the search when no address is available; the catalog UUID is not a Google Place ID.
+
+### Automatic report upload
+
+Local saves remain immediate. A background queue coalesces updates, retries pending uploads about once a minute while signed in and the app process is running, and resumes from saved files after restart. Uploaded content fingerprints avoid sending unchanged reports; new notes, observations and AI answers update the same server record. A lost create response is held for server confirmation instead of blindly creating a second record. This is a demo queue, not an Android background-job service after the process is stopped.
+
+Saved reports show upload status, server ID when available, and a Retry upload control. Reports require a vehicle model and VIN; these can be entered in report details if missing. New AI-only reports use the Volvo D13C / TESTVIN1233456566 context displayed in the assistant; ECU snapshots retain their own vehicle metadata. Deleting a local report leaves its uploaded copy on FleetBeat. The external relay must be deployed and enabled for actual uploads; otherwise reports remain queued with a waiting-for-backend status.
+
+### FleetBeat colors
+
+The app uses the FleetBeat website’s green, slate and light neutral palette: brand green #28AF60, slate #2B3D4F and canvas #F6F9FB. Buttons and links use a deeper green #187D43 for legibility; cards and fields use pale neutral surfaces. Guidance requests retain a slate-blue waiting state and a pale-green completed state. The launcher icon and Android system bars follow the same palette.

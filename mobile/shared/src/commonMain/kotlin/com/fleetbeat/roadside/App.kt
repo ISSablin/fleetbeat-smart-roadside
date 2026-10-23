@@ -50,11 +50,7 @@ fun App(viewModel: AuthViewModel, catalogViewModel: CatalogViewModel, diagnostic
     }
     var homeTab by rememberSaveable(state.profile?.id) { mutableStateOf(0) }
     var passwordVisible by remember { mutableStateOf(false) }
-    MaterialTheme(colorScheme = darkColorScheme(
-        primary = Color(0xFFF7AA32), onPrimary = Color(0xFF151B25),
-        background = Color(0xFF101824), surface = Color(0xFF1A2635),
-        onBackground = Color(0xFFF2F5F8), onSurface = Color(0xFFF2F5F8),
-    )) {
+    MaterialTheme(colorScheme = FleetBeatLightColors) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             if (state.profile != null && reportsState.open) {
                 ReportsScreen(reportsViewModel, onExportReport)
